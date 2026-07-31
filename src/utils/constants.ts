@@ -1,0 +1,12 @@
+export const WARN_FILE_SIZE_BYTES = 1 * 1024 * 1024 * 1024; // 1GB — show warning, still allowed
+export const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB — hard cap, upload rejected
+
+export const SUPPORTED_AUDIO_EXTENSIONS = [
+  'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'oga', 'opus',
+  'wma', 'aiff', 'aif', 'amr', 'webm', 'mka', 'caf', '3gp', 'mp4',
+];
+
+export const MIN_CHUNK_MINUTES = 1;
+export const MAX_CHUNK_MINUTES = 180;
+export const DEFAULT_CHUNK_MINUTES = 18;
+export const CHUNK_PRESETS_MINUTES = [10, 15, 18, 20, 30];

@@ -1,0 +1,38 @@
+export interface AudioFileDetails {
+  file: File;
+  name: string;
+  size: number;
+  extension: string;
+  durationSeconds: number;
+  formattedDuration: string;
+  sampleRate?: number;
+  numberOfChannels?: number;
+}
+
+export interface ChunkInfo {
+  index: number;
+  filename: string;
+  startTimeSeconds: number;
+  durationSeconds: number;
+  formattedRange: string;
+  formattedDuration: string;
+  blob?: Blob;
+  size?: number;
+}
+
+export type ProcessingStage = 'idle' | 'analyzing' | 'ready' | 'loading-ffmpeg' | 'processing' | 'zipping' | 'completed' | 'error';
+
+export interface ProcessingProgressState {
+  stage: ProcessingStage;
+  currentChunkIndex: number;
+  totalChunks: number;
+  progressPercent: number;
+  statusMessage: string;
+  logs: string[];
+  errorMessage?: string;
+}
+
+export interface ProcessingOptions {
+  chunkDurationMinutes: number; // default 18
+  forceReencode: boolean; // default false (use -c copy first)
+}
