@@ -1,6 +1,13 @@
+<img src="public/favicon.svg" width="48" height="48" alt="AudioSlice icon" />
+
 # AudioSlice
 
 Split long audio recordings into equal-length chunks — entirely in your browser. No uploads, no server, no storage.
+
+<p>
+  <img src="assets/screenshots/2026-07-31%2010%2039%2048.png" width="49%" alt="AudioSlice file overview screen, showing chunk length settings and planned output" />
+  <img src="assets/screenshots/2026-07-31%2010%2040%2015.png" width="49%" alt="AudioSlice processing screen in dark mode, showing progress and activity logs" />
+</p>
 
 ## Features
 
