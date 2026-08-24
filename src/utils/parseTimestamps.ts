@@ -3,14 +3,21 @@ export interface ParsedTimeRange {
   endSec: number;
 }
 
-// Matches "3.16-5:14", "8.02 - 8.55", "24.22-24.54" etc. — mm.ss or mm:ss on
-// either side of the dash, separators used interchangeably. Anything else on
-// the line (chat sender names, dates, message timestamps) is ignored.
-const RANGE_REGEX = /(\d{1,3})[.:](\d{2})\s*-\s*(\d{1,3})[.:](\d{2})/;
+// Matches "3.16-5:14", "8.02 - 8.55", "24.22-24.54", and precise variants
+// with milliseconds like "3:16.245-5:14.000" — mm.ss or mm:ss on either side
+// of the dash (separators used interchangeably), with an optional .mmm tail
+// for sub-second precision. Anything else on the line (chat sender names,
+// dates, message timestamps) is ignored.
+const RANGE_REGEX = /(\d{1,3})[.:](\d{2})(?:\.(\d{1,3}))?\s*-\s*(\d{1,3})[.:](\d{2})(?:\.(\d{1,3}))?/;
+
+function msFraction(ms: string | undefined): number {
+  return ms ? Number(ms) / Math.pow(10, ms.length) : 0;
+}
 
 /**
- * Parses one time-range per line (mm.ss-mm.ss / mm:ss-mm:ss) out of pasted
- * text, e.g. lines copied from a chat export. Lines without a matching
+ * Parses one time-range per line (mm.ss-mm.ss / mm:ss-mm:ss, optionally with
+ * .mmm precision) out of pasted text, e.g. lines copied from a chat export
+ * or from the Timestamp Finder's mark list. Lines without a matching
  * pattern, or with end <= start, are skipped.
  */
 export function parseTimestampRanges(text: string): ParsedTimeRange[] {
@@ -20,9 +27,9 @@ export function parseTimestampRanges(text: string): ParsedTimeRange[] {
     const match = line.match(RANGE_REGEX);
     if (!match) continue;
 
-    const [, startMin, startSec, endMin, endSec] = match;
-    const startTotal = Number(startMin) * 60 + Number(startSec);
-    const endTotal = Number(endMin) * 60 + Number(endSec);
+    const [, startMin, startSec, startMs, endMin, endSec, endMs] = match;
+    const startTotal = Number(startMin) * 60 + Number(startSec) + msFraction(startMs);
+    const endTotal = Number(endMin) * 60 + Number(endSec) + msFraction(endMs);
 
     if (Number.isNaN(startTotal) || Number.isNaN(endTotal) || endTotal <= startTotal) continue;
     ranges.push({ startSec: startTotal, endSec: endTotal });

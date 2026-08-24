@@ -1,7 +1,40 @@
 import { fetchFile } from '@ffmpeg/util';
-import { AudioFileDetails, ChunkInfo, EditorClip } from '../types';
+import { AudioFileDetails, ChunkInfo, EditorClip, SpoilSettings } from '../types';
 import { getFFmpegInstance, getCodecStrategy } from './ffmpegService';
 import { formatFFmpegTime, formatHumanDuration, formatTimestampRange, getFileExtensionAndBase } from '../utils/formatters';
+
+/**
+ * Builds the FFmpeg args for one clip's audio filtering: gain plus the optional
+ * "Protect Original" degradations (noise/muffle/wobble). Noise needs an extra
+ * lavfi input mixed in via filter_complex; the rest run as a plain -af chain.
+ */
+function buildClipFilterArgs(gainDb: number, durationFormatted: string, spoil?: SpoilSettings): string[] {
+  const chain: string[] = [];
+  if (gainDb !== 0) chain.push(`volume=${gainDb}dB`);
+
+  const spoilOn = spoil?.enabled ?? false;
+  if (spoilOn && spoil!.muffleAmount > 0) {
+    const cutoff = Math.round(12000 - (spoil!.muffleAmount / 100) * 10500);
+    chain.push(`lowpass=f=${cutoff}`);
+  }
+  if (spoilOn && spoil!.wobbleAmount > 0) {
+    const depth = (spoil!.wobbleAmount / 100) * 0.9;
+    chain.push(`vibrato=f=6:d=${depth.toFixed(2)}`);
+  }
+
+  if (spoilOn && spoil!.noiseAmount > 0) {
+    const amp = (spoil!.noiseAmount / 100) * 0.5;
+    const mainLabel = chain.length > 0 ? `[0:a]${chain.join(',')}[m]` : `[0:a]anull[m]`;
+    const filterComplex = `${mainLabel};[1:a]volume=${amp.toFixed(3)}[n];[m][n]amix=inputs=2:duration=first:normalize=0[aout]`;
+    return [
+      '-f', 'lavfi', '-t', durationFormatted, '-i', 'anoisesrc=color=pink:amplitude=1',
+      '-filter_complex', filterComplex,
+      '-map', '[aout]',
+    ];
+  }
+
+  return chain.length > 0 ? ['-af', chain.join(',')] : [];
+}
 
 /**
  * Renders manually-picked clips (trim + gain) via FFmpeg WASM, optionally
@@ -11,6 +44,7 @@ export async function exportClips(
   fileDetails: AudioFileDetails,
   clips: EditorClip[],
   joinIntoOne: boolean,
+  spoil: SpoilSettings | undefined,
   onProgress: (percent: number, currentIndex: number, total: number, logMsg: string) => void
 ): Promise<ChunkInfo[]> {
   if (clips.length === 0) {
@@ -42,13 +76,13 @@ export async function exportClips(
       const startFormatted = formatFFmpegTime(clip.startSec);
       const durationFormatted = formatFFmpegTime(durationSec);
       const partFilename = `edit_part${i.toString().padStart(2, '0')}.${strategy.extension}`;
-      const gainArgs = clip.gainDb !== 0 ? ['-af', `volume=${clip.gainDb}dB`] : [];
+      const filterArgs = buildClipFilterArgs(clip.gainDb, durationFormatted, spoil);
 
       await ffmpeg.exec([
         '-ss', startFormatted,
-        '-i', inputFilename,
         '-t', durationFormatted,
-        ...gainArgs,
+        '-i', inputFilename,
+        ...filterArgs,
         ...strategy.encodeArgs,
         partFilename,
       ]);

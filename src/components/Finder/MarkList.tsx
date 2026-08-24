@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Check, ClipboardCopy, ListChecks, Pause, Play, Trash2 } from 'lucide-react';
 import { TimestampMark } from '../../types';
-import { formatHumanDuration, formatMinutesSeconds, formatTimestampRange } from '../../utils/formatters';
+import { formatHumanDuration, formatPreciseTime } from '../../utils/formatters';
 
 interface MarkListProps {
   marks: TimestampMark[];
@@ -13,7 +13,7 @@ interface MarkListProps {
 export const MarkList: React.FC<MarkListProps> = ({ marks, onRemoveMark, onPreviewMark, previewingMarkId }) => {
   const [copied, setCopied] = useState(false);
 
-  const outputText = marks.map((m) => `${formatMinutesSeconds(m.startSec)}-${formatMinutesSeconds(m.endSec)}`).join('\n');
+  const outputText = marks.map((m) => `${formatPreciseTime(m.startSec)}-${formatPreciseTime(m.endSec)}`).join('\n');
 
   const handleCopy = async () => {
     try {
@@ -54,7 +54,7 @@ export const MarkList: React.FC<MarkListProps> = ({ marks, onRemoveMark, onPrevi
               </span>
               <div className="flex-1 min-w-0">
                 <p className="font-mono text-slate-800 dark:text-slate-200 font-medium">
-                  {formatTimestampRange(mark.startSec, mark.endSec - mark.startSec)}
+                  {formatPreciseTime(mark.startSec)} - {formatPreciseTime(mark.endSec)}
                 </p>
                 <p className="text-slate-500 dark:text-slate-400">{formatHumanDuration(mark.endSec - mark.startSec)}</p>
               </div>

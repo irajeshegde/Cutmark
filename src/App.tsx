@@ -18,7 +18,7 @@ import { DEFAULT_CHUNK_MINUTES } from './utils/constants';
 
 export default function App() {
   const [fileDetails, setFileDetails] = useState<AudioFileDetails | null>(null);
-  const [mode, setMode] = useState<AppMode>('split');
+  const [mode, setMode] = useState<AppMode>('editor');
   const [chunkDurationMinutes, setChunkDurationMinutes] = useState<number>(DEFAULT_CHUNK_MINUTES);
   const [createdChunks, setCreatedChunks] = useState<ChunkInfo[]>([]);
   const [zipBlob, setZipBlob] = useState<Blob | null>(null);
@@ -140,7 +140,7 @@ export default function App() {
 
   const handleReset = () => {
     setFileDetails(null);
-    setMode('split');
+    setMode('editor');
     setCreatedChunks([]);
     setZipBlob(null);
     setProcessingState({

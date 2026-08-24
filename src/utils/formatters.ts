@@ -70,6 +70,18 @@ export function formatMinutesSeconds(seconds: number): string {
 }
 
 /**
+ * Format time in seconds to mm:ss.mmm — precise, round-trippable through
+ * parseTimeOrRangeInput/parseTimestampRanges for marking exact cut points.
+ */
+export function formatPreciseTime(seconds: number): string {
+  const totalMs = Math.round(Math.max(0, seconds) * 1000);
+  const mm = Math.floor(totalMs / 60000).toString().padStart(2, '0');
+  const ss = Math.floor((totalMs % 60000) / 1000).toString().padStart(2, '0');
+  const mmm = (totalMs % 1000).toString().padStart(3, '0');
+  return `${mm}:${ss}.${mmm}`;
+}
+
+/**
  * Format file size in bytes to MB/GB
  */
 export function formatFileSize(bytes: number): string {

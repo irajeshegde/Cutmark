@@ -52,3 +52,10 @@ export interface TimestampMark {
   startSec: number;
   endSec: number;
 }
+
+export interface SpoilSettings {
+  enabled: boolean;
+  noiseAmount: number; // 0-100, mixes in hiss to mask fidelity
+  muffleAmount: number; // 0-100, low-pass cutoff strength
+  wobbleAmount: number; // 0-100, pitch/speed vibrato depth
+}

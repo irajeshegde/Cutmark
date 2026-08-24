@@ -2,7 +2,7 @@ import React from 'react';
 import { Check, Play, Pause, Scissors, SplitSquareHorizontal, X, XCircle, ZoomIn } from 'lucide-react';
 import { MAX_GAIN_DB, MIN_GAIN_DB } from '../../utils/constants';
 import { parseTimeOrRangeInput } from '../../utils/parseTimestamps';
-import { formatMinutesSeconds } from '../../utils/formatters';
+import { formatMinutesSeconds, formatPreciseTime } from '../../utils/formatters';
 import { SeekSteps } from './SeekSteps';
 
 interface EditorToolbarProps {
@@ -12,6 +12,7 @@ interface EditorToolbarProps {
   region: { start: number; end: number } | null;
   gainDb: number;
   zoomPxPerSec: number;
+  minZoomPxPerSec?: number;
   onTogglePlay: () => void;
   onStep: (deltaSec: number) => void;
   onRegionStartChange: (sec: number) => void;
@@ -35,6 +36,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   region,
   gainDb,
   zoomPxPerSec,
+  minZoomPxPerSec = 10,
   onTogglePlay,
   onStep,
   onRegionStartChange,
@@ -89,8 +91,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <ZoomIn className="w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="range"
-            min={10}
-            max={300}
+            min={minZoomPxPerSec}
+            max={Math.max(300, minZoomPxPerSec)}
             value={zoomPxPerSec}
             onChange={(e) => onZoomChange(Number(e.target.value))}
             className="w-24 sm:w-28 accent-indigo-600"
@@ -112,10 +114,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <input
             type="text"
             disabled={durationSec <= 0}
-            defaultValue={region ? formatMinutesSeconds(region.start) : ''}
+            defaultValue={region ? formatPreciseTime(region.start) : ''}
             key={`start-${region?.start ?? 'none'}`}
             onBlur={(e) => handleTimeInput(e.target.value, onRegionStartChange)}
-            placeholder="mm:ss or mm.ss-mm.ss"
+            placeholder="mm:ss.mmm or mm.ss-mm.ss"
             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-800 dark:text-slate-100 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
           />
         </div>
@@ -127,10 +129,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <input
             type="text"
             disabled={durationSec <= 0}
-            defaultValue={region ? formatMinutesSeconds(region.end) : ''}
+            defaultValue={region ? formatPreciseTime(region.end) : ''}
             key={`end-${region?.end ?? 'none'}`}
             onBlur={(e) => handleTimeInput(e.target.value, onRegionEndChange)}
-            placeholder="mm:ss or mm.ss-mm.ss"
+            placeholder="mm:ss.mmm or mm.ss-mm.ss"
             className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-800 dark:text-slate-100 px-3 py-2 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 disabled:opacity-40"
           />
         </div>

@@ -20,7 +20,7 @@ export interface WaveformHandle {
 
 interface WaveformProps {
   file: File;
-  onReady?: (durationSec: number) => void;
+  onReady?: (durationSec: number, fitPxPerSec: number) => void;
   onTimeUpdate?: (currentSec: number) => void;
   onPlayPauseChange?: (isPlaying: boolean) => void;
   onRegionChange?: (region: WaveformRegion | null) => void;
@@ -66,7 +66,14 @@ export const Waveform = forwardRef<WaveformHandle, WaveformProps>(
         });
       };
 
-      ws.on('ready', (duration) => onReady?.(duration));
+      ws.on('ready', (duration) => {
+        // Measure wavesurfer's own scroll element (inside its shadow root), not our
+        // padded container — its available width is narrower than containerRef's.
+        const scrollEl = containerRef.current?.firstElementChild as HTMLElement | undefined;
+        const innerWidth = scrollEl?.shadowRoot?.querySelector('.scroll')?.clientWidth ?? containerRef.current?.clientWidth ?? 0;
+        const fitPxPerSec = duration > 0 && innerWidth > 0 ? innerWidth / duration : 10;
+        onReady?.(duration, fitPxPerSec);
+      });
       ws.on('timeupdate', (currentTime) => onTimeUpdate?.(currentTime));
       // 'timeupdate' doesn't reliably fire for a paused programmatic/click seek — 'seeking' covers that gap.
       ws.on('seeking', (currentTime) => onTimeUpdate?.(currentTime));
@@ -133,7 +140,7 @@ export const Waveform = forwardRef<WaveformHandle, WaveformProps>(
     return (
       <div
         ref={containerRef}
-        className="w-full rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3"
+        className="waveform-host w-full rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3"
       />
     );
   }
