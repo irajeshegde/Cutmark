@@ -1,17 +1,19 @@
 import React, { useRef, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { Waveform, WaveformHandle, WaveformRegion } from './Waveform';
 import { EditorToolbar } from './EditorToolbar';
 import { ClipList } from './ClipList';
 import { TimestampImport } from './TimestampImport';
 import { ProcessingProgress } from '../ProcessingProgress';
 import { CompletionView } from '../CompletionView';
+import { FileHeaderBanner } from '../FileHeaderBanner';
 import { AudioFileDetails, ChunkInfo, EditorClip, ProcessingProgressState } from '../../types';
-import { formatFileSize } from '../../utils/formatters';
 import { DEFAULT_GAIN_DB } from '../../utils/constants';
 import { parseTimestampRanges } from '../../utils/parseTimestamps';
 import { exportClips } from '../../services/audioEditorService';
 import { createAndDownloadZip } from '../../services/zipService';
+import { useSeekShortcuts } from '../../hooks/useSeekShortcuts';
+
+const MAX_UNDO_DEPTH = 20;
 
 interface AudioEditorProps {
   fileDetails: AudioFileDetails;
@@ -35,6 +37,7 @@ const IDLE_EXPORT_STATE: ProcessingProgressState = {
 
 export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }) => {
   const waveformRef = useRef<WaveformHandle>(null);
+  const previewEndSecRef = useRef<number | null>(null);
 
   const [durationSec, setDurationSec] = useState(0);
   const [currentTimeSec, setCurrentTimeSec] = useState(0);
@@ -44,14 +47,84 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
   const [zoomPxPerSec, setZoomPxPerSec] = useState(50);
 
   const [clips, setClips] = useState<EditorClip[]>([]);
+  const [clipsHistory, setClipsHistory] = useState<EditorClip[][]>([]);
   const [joinIntoOne, setJoinIntoOne] = useState(false);
+  const [previewingClipId, setPreviewingClipId] = useState<string | null>(null);
+  const [editingClipId, setEditingClipId] = useState<string | null>(null);
 
   const [exportState, setExportState] = useState<ProcessingProgressState>(IDLE_EXPORT_STATE);
   const [resultChunks, setResultChunks] = useState<ChunkInfo[]>([]);
   const [zipBlob, setZipBlob] = useState<Blob | null>(null);
 
+  const editingClip = clips.find((c) => c.id === editingClipId) ?? null;
+
   const relabel = (list: EditorClip[]): EditorClip[] =>
     list.map((c, i) => ({ ...c, label: `part${String(i + 1).padStart(2, '0')}` }));
+
+  const pushHistory = (snapshot: EditorClip[]) => {
+    setClipsHistory((h) => [...h, snapshot].slice(-MAX_UNDO_DEPTH));
+  };
+
+  const handleUndo = () => {
+    setClipsHistory((h) => {
+      if (h.length === 0) return h;
+      setClips(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  };
+
+  const handleTimeUpdate = (t: number) => {
+    setCurrentTimeSec(t);
+    if (previewEndSecRef.current !== null && t >= previewEndSecRef.current) {
+      waveformRef.current?.pause();
+      previewEndSecRef.current = null;
+      setPreviewingClipId(null);
+    }
+  };
+
+  const handlePlayPauseChange = (playing: boolean) => {
+    setIsPlaying(playing);
+    if (!playing) {
+      setPreviewingClipId(null);
+      previewEndSecRef.current = null;
+    }
+  };
+
+  const handlePreviewClip = (clip: EditorClip) => {
+    if (previewingClipId === clip.id) {
+      waveformRef.current?.pause();
+      setPreviewingClipId(null);
+      previewEndSecRef.current = null;
+      return;
+    }
+    previewEndSecRef.current = clip.endSec;
+    setPreviewingClipId(clip.id);
+    waveformRef.current?.seekTo(clip.startSec);
+    waveformRef.current?.play();
+  };
+
+  const handleEditClip = (clip: EditorClip) => {
+    setEditingClipId(clip.id);
+    setGainDb(clip.gainDb);
+    waveformRef.current?.setRegionTimes(clip.startSec, clip.endSec);
+    waveformRef.current?.setVolume(dbToLinear(clip.gainDb));
+    if (zoomPxPerSec < 100) handleZoomChange(140);
+  };
+
+  const handleSaveEditedClip = () => {
+    if (!editingClipId || !region) return;
+    pushHistory(clips);
+    setClips((prev) =>
+      prev.map((c) => (c.id === editingClipId ? { ...c, startSec: region.start, endSec: region.end, gainDb } : c))
+    );
+    setEditingClipId(null);
+    waveformRef.current?.clearRegion();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingClipId(null);
+    waveformRef.current?.clearRegion();
+  };
 
   const handleGainChange = (db: number) => {
     setGainDb(db);
@@ -84,6 +157,7 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
 
   const handleExtractSelection = () => {
     if (!region) return;
+    pushHistory(clips);
     setClips((prev) =>
       relabel([...prev, { id: crypto.randomUUID(), startSec: region.start, endSec: region.end, gainDb, label: '' }])
     );
@@ -102,6 +176,7 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
     }
     if (remaining.length === 0) return;
 
+    pushHistory(clips);
     setClips(relabel(remaining));
     if (remaining.length > 1) setJoinIntoOne(true);
     waveformRef.current?.clearRegion();
@@ -112,6 +187,7 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
 
     if (clips.length === 0) {
       if (currentTimeSec <= BOUNDARY_EPSILON_SEC || currentTimeSec >= durationSec - BOUNDARY_EPSILON_SEC) return;
+      pushHistory(clips);
       setClips(
         relabel([
           { id: crypto.randomUUID(), startSec: 0, endSec: currentTimeSec, gainDb: 0, label: '' },
@@ -130,6 +206,7 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
     const head: EditorClip = { ...target, id: crypto.randomUUID(), endSec: currentTimeSec };
     const tail: EditorClip = { ...target, id: crypto.randomUUID(), startSec: currentTimeSec };
 
+    pushHistory(clips);
     setClips((prev) => {
       const copy = [...prev];
       copy.splice(idx, 1, head, tail);
@@ -152,14 +229,17 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
       .filter((c) => c.endSec > c.startSec);
 
     if (imported.length === 0) return;
+    pushHistory(clips);
     setClips((prev) => relabel([...prev, ...imported]));
   };
 
   const handleRemoveClip = (id: string) => {
+    pushHistory(clips);
     setClips((prev) => relabel(prev.filter((c) => c.id !== id)));
   };
 
   const handleMoveClip = (id: string, direction: 'up' | 'down') => {
+    pushHistory(clips);
     setClips((prev) => {
       const idx = prev.findIndex((c) => c.id === id);
       const swapWith = direction === 'up' ? idx - 1 : idx + 1;
@@ -173,6 +253,13 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
   const handleClipGainChange = (id: string, db: number) => {
     setClips((prev) => prev.map((c) => (c.id === id ? { ...c, gainDb: db } : c)));
   };
+
+  const handleStep = (deltaSec: number) => {
+    const target = Math.min(durationSec, Math.max(0, currentTimeSec + deltaSec));
+    waveformRef.current?.seekTo(target);
+  };
+
+  useSeekShortcuts(() => waveformRef.current?.togglePlayPause(), handleStep);
 
   const handleExport = async () => {
     if (clips.length === 0) return;
@@ -248,38 +335,15 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-      <div className="p-6 sm:p-8 bg-slate-900 dark:bg-slate-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white font-bold flex items-center justify-center text-base shrink-0 uppercase shadow-md">
-            {fileDetails.extension}
-          </div>
-          <div className="overflow-hidden">
-            <h2 className="text-lg sm:text-xl font-semibold truncate text-slate-100" title={fileDetails.name}>
-              {fileDetails.name}
-            </h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-slate-400">
-              <span>Size: <strong className="text-slate-200 font-medium">{formatFileSize(fileDetails.size)}</strong></span>
-              <span>•</span>
-              <span>Total Duration: <strong className="text-indigo-300 font-medium">{fileDetails.formattedDuration}</strong></span>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={onReset}
-          className="self-start sm:self-auto text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Change File
-        </button>
-      </div>
+      <FileHeaderBanner fileDetails={fileDetails} onReset={onReset} />
 
       <div className="p-6 sm:p-8 space-y-6">
         <Waveform
           ref={waveformRef}
           file={fileDetails.file}
           onReady={setDurationSec}
-          onTimeUpdate={setCurrentTimeSec}
-          onPlayPauseChange={setIsPlaying}
+          onTimeUpdate={handleTimeUpdate}
+          onPlayPauseChange={handlePlayPauseChange}
           onRegionChange={setRegion}
         />
 
@@ -291,6 +355,7 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
           gainDb={gainDb}
           zoomPxPerSec={zoomPxPerSec}
           onTogglePlay={() => waveformRef.current?.togglePlayPause()}
+          onStep={handleStep}
           onRegionStartChange={handleRegionStartChange}
           onRegionEndChange={handleRegionEndChange}
           onRegionRangeChange={handleRegionRangeChange}
@@ -300,9 +365,12 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
           onExtractSelection={handleExtractSelection}
           onDeleteSelection={handleDeleteSelection}
           onSplitAtPlayhead={handleSplitAtPlayhead}
+          editingClipLabel={editingClip?.label ?? null}
+          onSaveEdit={handleSaveEditedClip}
+          onCancelEdit={handleCancelEdit}
         />
 
-        <TimestampImport onImport={handleImportTimestamps} />
+        <TimestampImport onImport={handleImportTimestamps} disabled={editingClipId !== null} />
 
         <ClipList
           clips={clips}
@@ -311,6 +379,12 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }
           onRemoveClip={handleRemoveClip}
           onMoveClip={handleMoveClip}
           onClipGainChange={handleClipGainChange}
+          onPreviewClip={handlePreviewClip}
+          onEditClip={handleEditClip}
+          previewingClipId={previewingClipId}
+          editingClipId={editingClipId}
+          onUndo={handleUndo}
+          canUndo={clipsHistory.length > 0}
           onExport={handleExport}
           isExporting={false}
         />

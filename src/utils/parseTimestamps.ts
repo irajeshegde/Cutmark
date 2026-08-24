@@ -30,3 +30,26 @@ export function parseTimestampRanges(text: string): ParsedTimeRange[] {
 
   return ranges;
 }
+
+export type TimeInputResult = { kind: 'single'; sec: number } | { kind: 'range'; startSec: number; endSec: number };
+
+/**
+ * Parses a single toolbar time-field value: either a plain "mm:ss" (or bare
+ * seconds), or a pasted full range ("12.08-13.18") which sets both ends at once.
+ */
+export function parseTimeOrRangeInput(raw: string): TimeInputResult | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const ranges = parseTimestampRanges(trimmed);
+  if (ranges.length === 1) {
+    return { kind: 'range', startSec: ranges[0].startSec, endSec: ranges[0].endSec };
+  }
+
+  const parts = trimmed.split(':').map(Number);
+  if (parts.some(Number.isNaN)) return null;
+  const sec = parts.length === 2 ? parts[0] * 60 + parts[1] : Number(trimmed);
+  if (Number.isNaN(sec)) return null;
+
+  return { kind: 'single', sec };
+}

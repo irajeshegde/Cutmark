@@ -1,7 +1,9 @@
 import React from 'react';
-import { Play, Pause, Scissors, SplitSquareHorizontal, XCircle, ZoomIn } from 'lucide-react';
+import { Check, Play, Pause, Scissors, SplitSquareHorizontal, X, XCircle, ZoomIn } from 'lucide-react';
 import { MAX_GAIN_DB, MIN_GAIN_DB } from '../../utils/constants';
-import { parseTimestampRanges } from '../../utils/parseTimestamps';
+import { parseTimeOrRangeInput } from '../../utils/parseTimestamps';
+import { formatMinutesSeconds } from '../../utils/formatters';
+import { SeekSteps } from './SeekSteps';
 
 interface EditorToolbarProps {
   currentTimeSec: number;
@@ -11,6 +13,7 @@ interface EditorToolbarProps {
   gainDb: number;
   zoomPxPerSec: number;
   onTogglePlay: () => void;
+  onStep: (deltaSec: number) => void;
   onRegionStartChange: (sec: number) => void;
   onRegionEndChange: (sec: number) => void;
   onRegionRangeChange: (start: number, end: number) => void;
@@ -20,13 +23,9 @@ interface EditorToolbarProps {
   onExtractSelection: () => void;
   onDeleteSelection: () => void;
   onSplitAtPlayhead: () => void;
-}
-
-function formatMMSS(sec: number): string {
-  const total = Math.max(0, Math.round(sec));
-  const mm = Math.floor(total / 60).toString().padStart(2, '0');
-  const ss = (total % 60).toString().padStart(2, '0');
-  return `${mm}:${ss}`;
+  editingClipLabel?: string | null;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -37,6 +36,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   gainDb,
   zoomPxPerSec,
   onTogglePlay,
+  onStep,
   onRegionStartChange,
   onRegionEndChange,
   onRegionRangeChange,
@@ -46,26 +46,30 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onExtractSelection,
   onDeleteSelection,
   onSplitAtPlayhead,
+  editingClipLabel,
+  onSaveEdit,
+  onCancelEdit,
 }) => {
   const handleTimeInput = (raw: string, apply: (sec: number) => void) => {
-    const trimmed = raw.trim();
-    if (!trimmed) return;
+    const result = parseTimeOrRangeInput(raw);
+    if (!result) return;
 
-    // Pasting a full range (e.g. "12.08-13.18") into either field sets both ends at once.
-    const ranges = parseTimestampRanges(trimmed);
-    if (ranges.length === 1) {
-      onRegionRangeChange(ranges[0].startSec, ranges[0].endSec);
+    if (result.kind === 'range') {
+      onRegionRangeChange(result.startSec, result.endSec);
       return;
     }
 
-    const parts = trimmed.split(':').map(Number);
-    if (parts.some(Number.isNaN)) return;
-    const sec = parts.length === 2 ? parts[0] * 60 + parts[1] : Number(trimmed);
-    if (!Number.isNaN(sec)) apply(Math.min(durationSec, Math.max(0, sec)));
+    apply(Math.min(durationSec, Math.max(0, result.sec)));
   };
 
   return (
     <div className="space-y-5">
+      {editingClipLabel && (
+        <div className="bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/30 rounded-xl px-4 py-2.5 text-xs text-amber-900 dark:text-amber-200 font-medium">
+          Editing <span className="font-mono">{editingClipLabel}</span> — adjust the selection below, then Save or Cancel.
+        </div>
+      )}
+
       {/* Transport row */}
       <div className="flex flex-wrap items-center gap-4">
         <button
@@ -76,10 +80,12 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </button>
 
         <span className="font-mono text-sm text-slate-600 dark:text-slate-300 tabular-nums">
-          {formatMMSS(currentTimeSec)} / {formatMMSS(durationSec)}
+          {formatMinutesSeconds(currentTimeSec)} / {formatMinutesSeconds(durationSec)}
         </span>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <SeekSteps onStep={onStep} />
+
+        <div className="flex items-center gap-2 sm:ml-auto">
           <ZoomIn className="w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="range"
@@ -87,10 +93,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             max={300}
             value={zoomPxPerSec}
             onChange={(e) => onZoomChange(Number(e.target.value))}
-            className="w-28 accent-indigo-600"
+            className="w-24 sm:w-28 accent-indigo-600"
           />
         </div>
       </div>
+
+      <p className="text-[11px] text-slate-400 dark:text-slate-500 -mt-3">
+        Shortcuts: <kbd className="font-mono">Space</kbd> play/pause · <kbd className="font-mono">←/→</kbd> step
+        0.1s · <kbd className="font-mono">Shift</kbd>+arrow 1s · <kbd className="font-mono">Alt</kbd>+arrow 10ms
+      </p>
 
       {/* Selection start/end + gain */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -101,7 +112,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <input
             type="text"
             disabled={durationSec <= 0}
-            defaultValue={region ? formatMMSS(region.start) : ''}
+            defaultValue={region ? formatMinutesSeconds(region.start) : ''}
             key={`start-${region?.start ?? 'none'}`}
             onBlur={(e) => handleTimeInput(e.target.value, onRegionStartChange)}
             placeholder="mm:ss or mm.ss-mm.ss"
@@ -116,7 +127,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <input
             type="text"
             disabled={durationSec <= 0}
-            defaultValue={region ? formatMMSS(region.end) : ''}
+            defaultValue={region ? formatMinutesSeconds(region.end) : ''}
             key={`end-${region?.end ?? 'none'}`}
             onBlur={(e) => handleTimeInput(e.target.value, onRegionEndChange)}
             placeholder="mm:ss or mm.ss-mm.ss"
@@ -141,28 +152,48 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
-        <button
-          onClick={onExtractSelection}
-          disabled={!region}
-          className="text-xs font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100/80 dark:hover:bg-indigo-500/20 px-3.5 py-2 rounded-lg border border-indigo-100 dark:border-indigo-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Scissors className="w-3.5 h-3.5" /> Extract Selection
-        </button>
+        {editingClipLabel ? (
+          <>
+            <button
+              onClick={onSaveEdit}
+              disabled={!region}
+              className="text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 px-3.5 py-2 rounded-lg border border-emerald-100 dark:border-emerald-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Check className="w-3.5 h-3.5" /> Save Changes
+            </button>
+            <button
+              onClick={onCancelEdit}
+              className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" /> Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={onExtractSelection}
+              disabled={!region}
+              className="text-xs font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100/80 dark:hover:bg-indigo-500/20 px-3.5 py-2 rounded-lg border border-indigo-100 dark:border-indigo-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Scissors className="w-3.5 h-3.5" /> Extract Selection
+            </button>
 
-        <button
-          onClick={onDeleteSelection}
-          disabled={!region}
-          className="text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 px-3.5 py-2 rounded-lg border border-rose-100 dark:border-rose-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <XCircle className="w-3.5 h-3.5" /> Delete Selection
-        </button>
+            <button
+              onClick={onDeleteSelection}
+              disabled={!region}
+              className="text-xs font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 px-3.5 py-2 rounded-lg border border-rose-100 dark:border-rose-500/30 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <XCircle className="w-3.5 h-3.5" /> Delete Selection
+            </button>
 
-        <button
-          onClick={onSplitAtPlayhead}
-          className="text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-        >
-          <SplitSquareHorizontal className="w-3.5 h-3.5" /> Split at Playhead
-        </button>
+            <button
+              onClick={onSplitAtPlayhead}
+              className="text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 px-3.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <SplitSquareHorizontal className="w-3.5 h-3.5" /> Split at Playhead
+            </button>
+          </>
+        )}
 
         {region && (
           <button

@@ -15,3 +15,8 @@ export const CHUNK_PRESETS_MINUTES = [10, 15, 18, 20, 30];
 export const MIN_GAIN_DB = -20;
 export const MAX_GAIN_DB = 20;
 export const DEFAULT_GAIN_DB = 0;
+
+// Seek step sizes in seconds: coarse (Shift+arrow), default (plain arrow), fine/"frame" (Alt+arrow)
+export const COARSE_STEP_SEC = 1;
+export const DEFAULT_STEP_SEC = 0.1;
+export const FINE_STEP_SEC = 0.01;

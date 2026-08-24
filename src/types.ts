@@ -37,7 +37,7 @@ export interface ProcessingOptions {
   forceReencode: boolean; // default false (use -c copy first)
 }
 
-export type AppMode = 'split' | 'editor';
+export type AppMode = 'split' | 'editor' | 'finder';
 
 export interface EditorClip {
   id: string;
@@ -45,4 +45,10 @@ export interface EditorClip {
   endSec: number;
   gainDb: number;
   label: string;
+}
+
+export interface TimestampMark {
+  id: string;
+  startSec: number;
+  endSec: number;
 }

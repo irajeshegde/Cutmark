@@ -2,8 +2,9 @@ import React from 'react';
 import { AudioFileDetails } from '../types';
 import { formatFileSize, formatHumanDuration } from '../utils/formatters';
 import { calculateChunks } from '../utils/audioMetadata';
-import { AlertTriangle, Layers, RefreshCw, Download } from 'lucide-react';
+import { AlertTriangle, Layers, Download } from 'lucide-react';
 import { WARN_FILE_SIZE_BYTES, MIN_CHUNK_MINUTES, MAX_CHUNK_MINUTES, CHUNK_PRESETS_MINUTES } from '../utils/constants';
+import { FileHeaderBanner } from './FileHeaderBanner';
 
 interface FileOverviewProps {
   fileDetails: AudioFileDetails;
@@ -35,31 +36,7 @@ export const FileOverview: React.FC<FileOverviewProps> = ({
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
       {/* File Banner Header */}
-      <div className="p-6 sm:p-8 bg-slate-900 dark:bg-slate-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white font-bold flex items-center justify-center text-base shrink-0 uppercase shadow-md">
-            {fileDetails.extension}
-          </div>
-          <div className="overflow-hidden">
-            <h2 className="text-lg sm:text-xl font-semibold truncate text-slate-100" title={fileDetails.name}>
-              {fileDetails.name}
-            </h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-slate-400">
-              <span>Size: <strong className="text-slate-200 font-medium">{formatFileSize(fileDetails.size)}</strong></span>
-              <span>•</span>
-              <span>Total Duration: <strong className="text-indigo-300 font-medium">{fileDetails.formattedDuration}</strong></span>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={onReset}
-          disabled={isProcessing}
-          className="self-start sm:self-auto text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Change File
-        </button>
-      </div>
+      <FileHeaderBanner fileDetails={fileDetails} onReset={onReset} disabled={isProcessing} />
 
       <div className="p-6 sm:p-8 space-y-6">
         {/* Large File Memory Warning */}

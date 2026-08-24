@@ -14,7 +14,7 @@ export const Header: React.FC = () => {
           </div>
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100 leading-tight">AudioSlice</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight">Split audio in your browser. Nothing uploaded.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight">Cut, trim, and time audio — 100% in your browser.</p>
           </div>
         </div>
 

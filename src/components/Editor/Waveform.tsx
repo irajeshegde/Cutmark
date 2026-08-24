@@ -8,6 +8,8 @@ export interface WaveformRegion {
 }
 
 export interface WaveformHandle {
+  play: () => void;
+  pause: () => void;
   togglePlayPause: () => void;
   seekTo: (sec: number) => void;
   setRegionTimes: (start: number, end: number) => void;
@@ -66,6 +68,8 @@ export const Waveform = forwardRef<WaveformHandle, WaveformProps>(
 
       ws.on('ready', (duration) => onReady?.(duration));
       ws.on('timeupdate', (currentTime) => onTimeUpdate?.(currentTime));
+      // 'timeupdate' doesn't reliably fire for a paused programmatic/click seek — 'seeking' covers that gap.
+      ws.on('seeking', (currentTime) => onTimeUpdate?.(currentTime));
       ws.on('play', () => onPlayPauseChange?.(true));
       ws.on('pause', () => onPlayPauseChange?.(false));
 
@@ -99,6 +103,8 @@ export const Waveform = forwardRef<WaveformHandle, WaveformProps>(
     }, [file]);
 
     useImperativeHandle(ref, () => ({
+      play: () => wavesurferRef.current?.play(),
+      pause: () => wavesurferRef.current?.pause(),
       togglePlayPause: () => wavesurferRef.current?.playPause(),
       seekTo: (sec) => {
         const ws = wavesurferRef.current;

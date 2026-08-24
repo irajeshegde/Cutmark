@@ -6,6 +6,8 @@ import { ProcessingProgress } from './components/ProcessingProgress';
 import { CompletionView } from './components/CompletionView';
 import { ModeSelect } from './components/ModeSelect';
 import { AudioEditor } from './components/Editor/AudioEditor';
+import { TimestampFinder } from './components/Finder/TimestampFinder';
+import { FeaturesSection } from './components/FeaturesSection';
 
 import { AppMode, AudioFileDetails, ChunkInfo, ProcessingProgressState } from './types';
 import { getAudioFileDetails } from './utils/audioMetadata';
@@ -157,7 +159,10 @@ export default function App() {
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* Step 1: File Drop Zone */}
         {(!fileDetails || processingState.stage === 'idle') && (
-          <DropZone onFileSelected={handleFileSelected} isLoading={isAnalyzing} />
+          <>
+            <DropZone onFileSelected={handleFileSelected} isLoading={isAnalyzing} />
+            <FeaturesSection />
+          </>
         )}
 
         {/* Step 2: Mode Select + File Overview / Manual Editor */}
@@ -165,7 +170,7 @@ export default function App() {
           <div className="space-y-6">
             <ModeSelect mode={mode} onModeChange={setMode} />
 
-            {mode === 'split' ? (
+            {mode === 'split' && (
               <FileOverview
                 fileDetails={fileDetails}
                 chunkDurationMinutes={chunkDurationMinutes}
@@ -174,9 +179,9 @@ export default function App() {
                 onReset={handleReset}
                 isProcessing={isAnalyzing}
               />
-            ) : (
-              <AudioEditor fileDetails={fileDetails} onReset={handleReset} />
             )}
+            {mode === 'editor' && <AudioEditor fileDetails={fileDetails} onReset={handleReset} />}
+            {mode === 'finder' && <TimestampFinder fileDetails={fileDetails} onReset={handleReset} />}
           </div>
         )}
 

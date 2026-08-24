@@ -60,6 +60,16 @@ function formatShortTime(seconds: number): string {
 }
 
 /**
+ * Format time in seconds to mm:ss (no hours) for editor toolbar readouts
+ */
+export function formatMinutesSeconds(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const mm = Math.floor(total / 60).toString().padStart(2, '0');
+  const ss = (total % 60).toString().padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+/**
  * Format file size in bytes to MB/GB
  */
 export function formatFileSize(bytes: number): string {
