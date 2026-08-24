@@ -4,8 +4,10 @@ import { DropZone } from './components/DropZone';
 import { FileOverview } from './components/FileOverview';
 import { ProcessingProgress } from './components/ProcessingProgress';
 import { CompletionView } from './components/CompletionView';
+import { ModeSelect } from './components/ModeSelect';
+import { AudioEditor } from './components/Editor/AudioEditor';
 
-import { AudioFileDetails, ChunkInfo, ProcessingProgressState } from './types';
+import { AppMode, AudioFileDetails, ChunkInfo, ProcessingProgressState } from './types';
 import { getAudioFileDetails } from './utils/audioMetadata';
 import { splitAudioFile } from './services/ffmpegService';
 import { createAndDownloadZip } from './services/zipService';
@@ -13,6 +15,7 @@ import { DEFAULT_CHUNK_MINUTES } from './utils/constants';
 
 export default function App() {
   const [fileDetails, setFileDetails] = useState<AudioFileDetails | null>(null);
+  const [mode, setMode] = useState<AppMode>('split');
   const [chunkDurationMinutes, setChunkDurationMinutes] = useState<number>(DEFAULT_CHUNK_MINUTES);
   const [createdChunks, setCreatedChunks] = useState<ChunkInfo[]>([]);
   const [zipBlob, setZipBlob] = useState<Blob | null>(null);
@@ -134,6 +137,7 @@ export default function App() {
 
   const handleReset = () => {
     setFileDetails(null);
+    setMode('split');
     setCreatedChunks([]);
     setZipBlob(null);
     setProcessingState({
@@ -156,16 +160,24 @@ export default function App() {
           <DropZone onFileSelected={handleFileSelected} isLoading={isAnalyzing} />
         )}
 
-        {/* Step 2: File Overview & Chunk Plan */}
+        {/* Step 2: Mode Select + File Overview / Manual Editor */}
         {fileDetails && (processingState.stage === 'ready' || processingState.stage === 'analyzing') && (
-          <FileOverview
-            fileDetails={fileDetails}
-            chunkDurationMinutes={chunkDurationMinutes}
-            onChunkDurationChange={setChunkDurationMinutes}
-            onStartProcessing={handleStartProcessing}
-            onReset={handleReset}
-            isProcessing={isAnalyzing}
-          />
+          <div className="space-y-6">
+            <ModeSelect mode={mode} onModeChange={setMode} />
+
+            {mode === 'split' ? (
+              <FileOverview
+                fileDetails={fileDetails}
+                chunkDurationMinutes={chunkDurationMinutes}
+                onChunkDurationChange={setChunkDurationMinutes}
+                onStartProcessing={handleStartProcessing}
+                onReset={handleReset}
+                isProcessing={isAnalyzing}
+              />
+            ) : (
+              <AudioEditor fileDetails={fileDetails} onReset={handleReset} />
+            )}
+          </div>
         )}
 
         {/* Step 3: Active Processing State */}

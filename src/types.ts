@@ -36,3 +36,13 @@ export interface ProcessingOptions {
   chunkDurationMinutes: number; // default 18
   forceReencode: boolean; // default false (use -c copy first)
 }
+
+export type AppMode = 'split' | 'editor';
+
+export interface EditorClip {
+  id: string;
+  startSec: number;
+  endSec: number;
+  gainDb: number;
+  label: string;
+}

@@ -9,6 +9,9 @@ import { formatFFmpegTime, formatHumanDuration, formatTimestampRange, getFileExt
  */
 const CODEC_STRATEGY: Record<string, { mimeType: string; encodeArgs: string[] }> = {
   mp3: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
+  mpeg: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
+  mpg: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
+  mpga: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
   m4a: { mimeType: 'audio/mp4', encodeArgs: ['-c:a', 'aac', '-b:a', '192k'] },
   aac: { mimeType: 'audio/aac', encodeArgs: ['-c:a', 'aac', '-b:a', '192k'] },
   mp4: { mimeType: 'audio/mp4', encodeArgs: ['-c:a', 'aac', '-b:a', '192k'] },
@@ -25,7 +28,7 @@ const CODEC_STRATEGY: Record<string, { mimeType: string; encodeArgs: string[] }>
 
 const FALLBACK_STRATEGY = { extension: 'mp3', mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] };
 
-function getCodecStrategy(extension: string): { extension: string; mimeType: string; encodeArgs: string[] } {
+export function getCodecStrategy(extension: string): { extension: string; mimeType: string; encodeArgs: string[] } {
   const strategy = CODEC_STRATEGY[extension];
   if (!strategy) return FALLBACK_STRATEGY;
   return { extension, ...strategy };
