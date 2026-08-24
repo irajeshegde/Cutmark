@@ -3,11 +3,6 @@ import { Crosshair, Layers, Lock, Waves } from 'lucide-react';
 
 const FEATURES = [
   {
-    icon: Layers,
-    title: 'Equal Split',
-    description: 'Split long recordings into fixed-length chunks in one click.',
-  },
-  {
     icon: Waves,
     title: 'Manual Editor',
     description: 'Waveform-based trim, gain, split, and join — pick exact start/end points on the graph.',
@@ -21,6 +16,11 @@ const FEATURES = [
     icon: Lock,
     title: '100% Local',
     description: 'Everything runs in your browser tab. No uploads, no server, no storage.',
+  },
+  {
+    icon: Layers,
+    title: 'Equal Split',
+    description: 'Split long recordings into fixed-length chunks in one click.',
   },
 ];
 

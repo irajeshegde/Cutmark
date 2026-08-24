@@ -8,9 +8,9 @@ interface ModeSelectProps {
 }
 
 const TABS: { mode: AppMode; label: string; icon: React.ReactNode }[] = [
-  { mode: 'split', label: 'Equal Split', icon: <Layers className="w-3.5 h-3.5" /> },
   { mode: 'editor', label: 'Manual Editor', icon: <Waves className="w-3.5 h-3.5" /> },
   { mode: 'finder', label: 'Find Timestamp', icon: <Crosshair className="w-3.5 h-3.5" /> },
+  { mode: 'split', label: 'Equal Split', icon: <Layers className="w-3.5 h-3.5" /> },
 ];
 
 export const ModeSelect: React.FC<ModeSelectProps> = ({ mode, onModeChange }) => {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Github } from 'lucide-react';
 import { Header } from './components/Header';
 import { DropZone } from './components/DropZone';
 import { FileOverview } from './components/FileOverview';
@@ -153,7 +154,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] dark:bg-slate-950 text-[#1a1a1a] dark:text-slate-100 font-sans flex flex-col selection:bg-indigo-500/20 selection:text-indigo-900">
+    <div className="min-h-screen bg-[#fcfcfc] dark:bg-slate-950 text-[#1a1a1a] dark:text-slate-100 font-sans flex flex-col selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:bg-indigo-400/30 dark:selection:text-indigo-50">
       <Header />
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-10 space-y-8">
@@ -201,8 +202,18 @@ export default function App() {
         )}
       </main>
 
-      <footer className="border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs text-slate-400 dark:text-slate-600">
-        Processing runs 100% locally in your browser. No uploads, no storage.
+      <footer className="border-t border-slate-200/60 dark:border-slate-800 py-6 text-center text-xs text-slate-400 dark:text-slate-600 space-y-1.5">
+        <p>Processing runs 100% locally in your browser. No uploads, no storage.</p>
+        <p>
+          <a
+            href="https://github.com/irajeshegde/AudioSlice"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-400 transition underline underline-offset-2"
+          >
+            <Github className="w-3.5 h-3.5" /> Open source on GitHub
+          </a>
+        </p>
       </footer>
     </div>
   );
