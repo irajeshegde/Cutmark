@@ -56,7 +56,7 @@ export const Transport: React.FC<TransportProps> = ({
       </label>
     </div>
 
-    <p className="text-[11px] leading-5 text-ink-3">
+    <p className="kb-hint text-[11px] leading-5 text-ink-3">
       <kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> 100 ms · <kbd>Shift</kbd> + arrow 1 s · <kbd>Alt</kbd> + arrow 10 ms
     </p>
   </div>

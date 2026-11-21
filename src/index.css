@@ -363,6 +363,14 @@ kbd {
    sliders get a taller hit area, and the page never scrolls sideways.
    Unlayered on purpose so it wins over the component layer.
    ========================================================================== */
+/* Keyboard hints (Space, arrows, B) mean nothing on a phone: hide them on touch
+   devices and at phone widths, so it reads as a touch app, not a shrunken desktop page. */
+@media (hover: none), (pointer: coarse), (max-width: 639px) {
+  .kb-hint {
+    display: none !important;
+  }
+}
+
 @media (pointer: coarse) {
   .btn,
   .field {

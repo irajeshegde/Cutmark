@@ -156,7 +156,7 @@ export const SpoilPanel: React.FC<SpoilPanelProps> = ({ settings, onChange, list
                 Spoilt
               </button>
             </div>
-            <kbd title="Press B to switch">B</kbd>
+            <kbd className="kb-hint" title="Press B to switch">B</kbd>
           </div>
           <p className="text-xs leading-5 text-ink-3">
             {previewAvailable

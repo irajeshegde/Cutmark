@@ -193,6 +193,11 @@ test.describe('mobile', () => {
     );
     expect(small).toEqual([]);
 
+    // keyboard-only hints must not show on a touch device
+    await expect(page.getByText('play/pause')).toBeHidden();
+    const visibleKbd = await page.evaluate(() => [...document.querySelectorAll('kbd')].filter((el) => el.offsetParent !== null).length);
+    expect(visibleKbd).toBe(0);
+
     // export bar stays on screen even when scrolled to the top of a long page
     await page.evaluate(() => window.scrollTo(0, 0));
     await expect(page.getByRole('button', { name: /export/i })).toBeInViewport();
