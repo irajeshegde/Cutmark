@@ -40,6 +40,13 @@ export const CapabilitiesPage: React.FC = () => (
       <li>Names include the date, a version number from the second export on, and part numbers only when there are several files.</li>
     </ul>
 
+    <h3>Working offline</h3>
+    <ul>
+      <li>Install it from the popup or the footer and it opens like an app, with or without a connection.</li>
+      <li>The page itself is saved on first visit. The 32&nbsp;MB audio engine is saved the first time you open the editor, or when you press <strong>Save for offline use</strong> in the footer.</li>
+      <li>New versions download in the background and wait. Nothing reloads until you say so, so an update never wipes an edit in progress.</li>
+    </ul>
+
     <h2>Formats</h2>
     <p>
       Input: MP3, M4A, AAC, WAV, FLAC, OGG, Opus, WebM, AIFF, MKA, MP4 audio and others that FFmpeg and your browser can read. Output
@@ -67,15 +74,20 @@ export const CapabilitiesPage: React.FC = () => (
         removal.
       </li>
       <li>
-        <strong>Nothing is saved.</strong> There is no account and no storage. Reloading the page discards your work.
+        <strong>Your work isn’t saved.</strong> There is no account, and your audio and clips are never stored. Reloading the page
+        discards them.
       </li>
       <li>
         <strong>Browsers.</strong> Developed and tested in Chromium-based browsers. Firefox and Safari should work but get less testing,
         and fullscreen isn’t available on iPhone.
       </li>
       <li>
-        <strong>First export loads a 32&nbsp;MB engine.</strong> It is served from this site and cached by your browser, so later
-        exports start immediately.
+        <strong>The engine is a 32&nbsp;MB download, once.</strong> Offline use needs it saved first, so open the editor or press
+        <strong> Save for offline use</strong> while you are connected. If your browser clears site data, it downloads again.
+      </li>
+      <li>
+        <strong>Installing depends on your browser.</strong> Chrome, Edge and Android browsers show an install prompt. On iPhone and iPad
+        use Share, then Add to Home Screen. Desktop Firefox can’t install web apps, though the offline copy still works in a tab.
       </li>
     </ul>
 
@@ -83,8 +95,9 @@ export const CapabilitiesPage: React.FC = () => (
     <p>
       Your audio is read by the page and processed by {BRAND.name}’s own copy of FFmpeg running in your browser. It is never uploaded.
       The only analytics is Vercel Web Analytics: anonymous, cookieless page-view counts that never include your audio, file names or
-      anything you do in the editor. Fonts and the audio engine are served from the same site. The only thing saved
-      on your device is your light/dark theme choice. You can check any of this in the{' '}
+      anything you do in the editor. Fonts and the audio engine are served from the same site. Your browser keeps a copy of
+      the app and the audio engine so it can run offline, plus your light/dark choice and whether you closed the install
+      suggestion. Your audio is never among them. You can check any of this in the{' '}
       <a href={BRAND.repoUrl} target="_blank" rel="noopener noreferrer">source code</a> or your browser’s network tab.
     </p>
 

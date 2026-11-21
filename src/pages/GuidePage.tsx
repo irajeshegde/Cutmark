@@ -105,6 +105,10 @@ export const GuidePage: React.FC = () => (
       <li>Zoom in on the waveform before nudging; at full zoom-out one pixel can be a second or more.</li>
       <li>Exports are re-encoded (192&nbsp;kbps for MP3 and AAC), so avoid chaining many exports of the same file if quality matters.</li>
       <li>On a phone, the Export button stays pinned to the bottom of the screen.</li>
+      <li>
+        Going somewhere without signal? Press <strong>Save for offline use</strong> in the footer once, while you’re online, or install
+        the app. Cutting, exporting and downloading then work with no connection.
+      </li>
       <li>Closing or reloading the tab discards your clips. Copy your timestamps first if you want to keep them.</li>
     </ul>
 

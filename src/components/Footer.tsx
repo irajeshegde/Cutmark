@@ -2,6 +2,7 @@ import React from 'react';
 import { BRAND, REPO_LINKS } from '../brand';
 import { routeHref } from '../hooks/useHashRoute';
 import { Logo } from './Logo';
+import { AppControls } from './AppControls';
 
 const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
 
@@ -37,6 +38,8 @@ export const Footer: React.FC = () => (
         </ul>
       </nav>
     </div>
+
+    <AppControls />
 
     <div className="border-t border-line">
       <div className="mx-auto max-w-5xl space-y-2 px-4 py-5 text-xs leading-5 text-ink-3 sm:px-6">

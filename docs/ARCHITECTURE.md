@@ -1,6 +1,6 @@
 # Architecture
 
-AudioSlice is a static single-page app. There is no backend; everything happens in the browser tab.
+Cutmark is a static single-page app. There is no backend; everything happens in the browser tab.
 
 ## Layers
 
@@ -38,6 +38,15 @@ Dependencies point downward only. `lib/` imports nothing from the layers above i
 
 The preview is close to, not bit-identical with, FFmpeg's output; the result view plays the real exported file for the final check. `createMediaElementSource` may be called once per element, so `useSpoilPreview` rebuilds the chain only when the element changes.
 
+## Offline and install (PWA)
+
+- `vite.config.ts` configures `vite-plugin-pwa` (generateSW). The service worker precaches the app shell only (about 800 KB). The 32 MB FFmpeg core under `/ffmpeg/` is **not** precached: it is cached on first use (`CacheFirst`, cache `cutmark-engine`) or on demand through "Save for offline use", so a casual visit never downloads it.
+- `registerType: 'prompt'`: a new version waits until the person taps Reload. An automatic reload would wipe clips mid-edit, so do not switch this to `autoUpdate`.
+- `src/lib/pwa.ts` is a small external store (install event, installed state, offline readiness, pending update). Listeners are attached in `main.tsx` before React mounts because `beforeinstallprompt` fires early and only once.
+- UI: `InstallBanner` (popup, home screen only, hides while the footer panel is in view) and `AppControls` (footer panel, always available). iOS Safari has no install event, so both show Add to Home Screen steps.
+- Icons come from `npm run brand-images`, including a maskable icon with the mark inside the 80% safe zone.
+- `e2e/pwa.spec.ts` covers the manifest, opening offline, cutting and downloading offline, and the popup/footer flow. Install itself cannot be automated; the test dispatches a synthetic `beforeinstallprompt`.
+
 ## Routing
 
 `hooks/useHashRoute.ts`: `#/`, `#/guide`, `#/capabilities`, `#/about`. Hash routing needs no rewrite rules on a static host.
@@ -49,9 +58,10 @@ The preview is close to, not bit-identical with, FFmpeg's output; the result vie
 | Pure logic, shortcuts, contrast | Vitest | `tests/*.test.ts` |
 | Components | Vitest + Testing Library (jsdom) | `tests/components.test.tsx` |
 | Real flows: load, cut, spoil, download, mobile, no third-party requests | Playwright (Chromium, production build) | `e2e/app.spec.ts` |
+| Install popup, offline use, manifest | Playwright (Chromium, production build) | `e2e/pwa.spec.ts` |
 
 jsdom has no Web Audio and no WASM, so anything that needs them is covered in e2e.
 
 ## Renaming the product
 
-Edit `src/brand.ts`, then `package.json` (`name`), `index.html` (title, meta tags and the theme-key script, which must match `BRAND.slug`), and `public/favicon.svg`.
+Edit `src/brand.ts`, then `package.json` (`name`), `index.html` (title, meta tags and the theme-key script, which must match `BRAND.slug`), and `public/favicon.svg`, plus the manifest in `vite.config.ts` and `npm run brand-images`.

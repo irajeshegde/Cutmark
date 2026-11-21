@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
+import { InstallBanner } from './components/InstallBanner';
 import { Landing } from './components/Landing/Landing';
 import { AudioFileDetails } from './types';
 import { getAudioFileDetails } from './utils/audioMetadata';
@@ -66,7 +67,10 @@ export default function App() {
               <Workspace key={`${fileDetails.name}-${fileDetails.size}-${fileDetails.file.lastModified}`} fileDetails={fileDetails} onReset={handleReset} />
             </Suspense>
           ) : (
-            <Landing onFileSelected={handleFileSelected} isLoading={isReading} error={readError} />
+            <>
+              <Landing onFileSelected={handleFileSelected} isLoading={isReading} error={readError} />
+              <InstallBanner />
+            </>
           ))}
       </main>
 

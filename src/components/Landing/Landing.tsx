@@ -37,7 +37,7 @@ export const Landing: React.FC<LandingProps> = ({ onFileSelected, isLoading, err
       </h1>
       <p className="mt-5 max-w-xl text-lg leading-8 text-ink-2">
         Trim, split and time-mark MP3, WAV, M4A and more. Pick cut points by ear with 10&nbsp;ms precision. Nothing is
-        uploaded, nothing is stored, and there is no account.
+        uploaded or saved, and there is no account.
       </p>
 
       <div className="mt-10">

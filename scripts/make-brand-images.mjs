@@ -4,7 +4,9 @@
 // Outputs (committed, served from /public):
 //   public/og-image.png          1200x630   Open Graph / Twitter / link previews
 //   public/apple-touch-icon.png  180x180    iOS home screen
-//   public/icon-512.png          512x512    PWA / Android / store listings
+//   public/icon-192.png          192x192    PWA install icon
+//   public/icon-512.png          512x512    PWA install icon / store listings
+//   public/icon-maskable-512.png 512x512    PWA maskable icon (art inside the 80% safe zone)
 //
 // To rename the product, edit src/brand.ts and the NAME/URL constants below.
 import { chromium } from '@playwright/test';
@@ -13,8 +15,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const NAME = 'AudioSlice';
-const URL_TEXT = 'audio-slice.vercel.app';
+const NAME = 'Cutmark';
+const URL_TEXT = 'cutmark.vercel.app';
 
 const font = (pkg, file) => readFileSync(resolve(root, 'node_modules', pkg, 'files', file)).toString('base64');
 const faces = `
@@ -82,6 +84,9 @@ h1 em{color:${ACCENT}}
 <div class="foot"><span>No uploads · no account · free &amp; open source</span><span>${URL_TEXT}</span></div>
 </body></html>`;
 
+// Maskable: Android crops to a circle/squircle, so the mark sits inside the central 80%.
+const maskableHtml = (size) => `<!doctype html><html><body style="margin:0;width:${size}px;height:${size}px;background:${PAPER};display:flex;align-items:center;justify-content:center">${logoMark(Math.round(size * 0.62)).replace(/<rect width="32" height="32" rx="6"[^>]*\/>/, `<rect width="32" height="32" fill="${PAPER}"/>`)}</body></html>`;
+
 const iconHtml = (size) => `<!doctype html><html><body style="margin:0;width:${size}px;height:${size}px;background:${PAPER}">${logoMark(size).replace(/<rect width="32" height="32" rx="6"[^>]*\/>/, `<rect width="32" height="32" fill="${PAPER}"/>`)}</body></html>`;
 
 const browser = await chromium.launch();
@@ -96,7 +101,9 @@ try {
   };
   await shot(ogHtml, 1200, 630, 'og-image.png');
   await shot(iconHtml(180), 180, 180, 'apple-touch-icon.png');
+  await shot(iconHtml(192), 192, 192, 'icon-192.png');
   await shot(iconHtml(512), 512, 512, 'icon-512.png');
+  await shot(maskableHtml(512), 512, 512, 'icon-maskable-512.png');
 } finally {
   await browser.close();
 }

@@ -304,7 +304,7 @@ export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset, 
         </details>
 
         {/* export bar: sticky so it is always one thumb away on a phone */}
-        <div className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur sm:mx-0 sm:border sm:rounded-cut sm:bg-surface">
+        <div className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-paper/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-3 backdrop-blur sm:mx-0 sm:border sm:rounded-cut sm:bg-surface">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-mono text-xs text-ink-3" role="status">
               {clips.length === 0

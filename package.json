@@ -1,5 +1,5 @@
 {
-  "name": "audioslice",
+  "name": "cutmark",
   "description": "Cut, split, trim, and time-mark MP3, WAV, M4A and other audio files entirely in the browser. No uploads, no server, no storage.",
   "private": true,
   "version": "0.2.0",
@@ -47,11 +47,14 @@
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
-    "vitest": "^3.2.7"
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^3.2.7",
+    "workbox-build": "^7.4.1",
+    "workbox-window": "^7.4.1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/irajeshegde/AudioSlice.git"
+    "url": "git+https://github.com/irajeshegde/Cutmark.git"
   },
   "engines": {
     "node": ">=20"

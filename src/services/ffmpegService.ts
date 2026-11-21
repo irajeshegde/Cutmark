@@ -1,5 +1,6 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { refreshOfflineState } from '../lib/pwa';
 import { AudioFileDetails, RenderedClip, SpoilSettings } from '../types';
 import { formatFFmpegTime, formatHumanDuration, formatTimestampRange } from '../utils/formatters';
 import { getExtension } from '../lib/filenames';
@@ -74,11 +75,16 @@ export function getFFmpegInstance(): Promise<FFmpeg> {
         wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
       });
     } catch (err) {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error('You are offline and the audio engine has not been saved on this device yet. Connect once, open the editor, and it will work offline from then on.');
+      }
       throw new Error(
         `Could not load the audio engine (${(err as Error).message || 'network error'}). Reload the page and try again.`
       );
     }
     ffmpegInstance = ffmpeg;
+    // The service worker has just cached the engine on the way through; let the UI say "works offline".
+    setTimeout(() => void refreshOfflineState(), 800);
     return ffmpeg;
   })().finally(() => {
     loading = null;

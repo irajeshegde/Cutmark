@@ -1,10 +1,10 @@
-# Contributing to AudioSlice
+# Contributing to Cutmark
 
-Thanks for helping. AudioSlice is open source (MIT) and any change that makes it more reliable, more accessible or more useful is welcome: bug reports, fixes, features, docs, translations, testing on other browsers.
+Thanks for helping. Cutmark is open source (MIT) and any change that makes it more reliable, more accessible or more useful is welcome: bug reports, fixes, features, docs, translations, testing on other browsers.
 
 ## Ways to help
 
-- **Report a bug.** Include the browser and version, the audio format (and roughly how long the file is), what you did, what you expected and what happened. A short sample file helps if you can share one. [Open an issue](https://github.com/irajeshegde/AudioSlice/issues/new/choose).
+- **Report a bug.** Include the browser and version, the audio format (and roughly how long the file is), what you did, what you expected and what happened. A short sample file helps if you can share one. [Open an issue](https://github.com/irajeshegde/Cutmark/issues/new/choose).
 - **Suggest a feature.** Say what you are trying to do, not only the feature. Small, focused tools beat big ones here.
 - **Test on other browsers and devices.** The project is developed in Chromium; Firefox, Safari and real phones need more eyes.
 - **Improve accessibility.** Screen-reader passes and keyboard-only passes are especially valuable.
@@ -15,8 +15,8 @@ Thanks for helping. AudioSlice is open source (MIT) and any change that makes it
 Node 20 or newer.
 
 ```bash
-git clone https://github.com/irajeshegde/AudioSlice.git
-cd AudioSlice
+git clone https://github.com/irajeshegde/Cutmark.git
+cd Cutmark
 npm install
 npm run dev
 ```
@@ -51,7 +51,7 @@ The short version of the architecture: **pure logic in `lib/`, side effects in `
 
 ## Ground rules
 
-1. **Nothing leaves the device.** No tracking beyond the existing cookieless Vercel page-view counter (off on localhost), no other third-party scripts, fonts or CDNs, no network calls with user audio. The e2e suite asserts that the page only talks to its own origin; keep it passing.
+1. **Nothing leaves the device.** No tracking beyond the existing cookieless Vercel page-view counter (off on localhost), no other third-party scripts, fonts or CDNs, no network calls with user audio. The e2e suite asserts that the page only talks to its own origin; keep it passing. Anything the service worker caches must be app files, never user audio.
 2. **Keep it simple to use.** One obvious next step on every screen. Prefer removing an option to adding one. Check your change at 390 px wide, with a touch screen in mind (44 px targets).
 3. **Accessible by default.** Real buttons and labels, visible focus, keyboard operation, `aria-live` for status changes, no colour-only meaning. Contrast is tested; if you add a colour pair, add it to `tests/contrast.test.ts`.
 4. **Use the design tokens.** Semantic classes (`bg-paper`, `text-ink-2`, `border-line`, `.btn`, `.panel`); never raw hex in components. See [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md). Dark mode then comes for free.
@@ -61,7 +61,7 @@ The short version of the architecture: **pure logic in `lib/`, side effects in `
 
 ## Renaming the product
 
-All names and links come from `src/brand.ts`. The static copies are `package.json` (`name`), `index.html` (title, meta, theme-key script) and `public/favicon.svg`. Search for `audioslice` and `AudioSlice` to be sure.
+All names and links come from `src/brand.ts`. The static copies are `package.json` (`name`), `index.html` (title, meta, theme-key script) and `public/favicon.svg`. Also the PWA manifest in `vite.config.ts` (name, short_name), the generated images (`npm run brand-images`) and the Vercel/GitHub project names. Search for `cutmark` and `Cutmark` to be sure.
 
 ## Using AI tools
 

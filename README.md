@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="public/favicon.svg" width="56" height="56" alt="AudioSlice logo" />
+  <img src="public/favicon.svg" width="56" height="56" alt="Cutmark logo" />
 </p>
 
-<h1 align="center">AudioSlice</h1>
+<h1 align="center">Cutmark</h1>
 
 <p align="center">
   Cut, split and time-mark audio in your browser.<br />
-  Nothing is uploaded, nothing is stored, there is no account.
+  Nothing is uploaded, there is no account, and it works offline.
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
   <img alt="Built with AI assistance" src="https://img.shields.io/badge/built%20with-AI%20assistance-lightgrey.svg" />
 </p>
 
-**Live site:** https://audio-slice.vercel.app
+**Live site:** https://cutmark.vercel.app
 
 ## What it does
 
@@ -30,13 +30,14 @@ Plus:
 - **Spoil the audio** (“Protect Original”): deliberately degrade an export (muffle, wobble, hiss) so it works as a preview but not a replacement. A live **Original / Spoilt** switch lets you hear it while it plays, and a meter rates how damaged it is. Spoilt files are named `_spoilt`.
 - **Simple downloads:** one output file downloads as itself; several come as a single ZIP. Nothing downloads until you press the button.
 - **Predictable names:** `{name}_{YYYY-MM-DD}[_vN][_spoilt][_partNN].{ext}`. A version appears only from the second export of the same file on the same day; a part number only when there are several files.
+- **Installable and offline:** a PWA. Install it from the in-page popup or the footer (Add to Home Screen on iPhone); once the audio engine is saved it cuts with no connection. Updates wait for you to reload, so they never wipe an edit.
 - Works on phones (44 px touch targets, sticky export bar), light and dark themes, keyboard shortcuts, reduced-motion support.
 
 Details for users: the in-app **Guide** and **Capabilities** pages (`src/pages/`).
 
 ## Privacy
 
-Audio is decoded and cut by FFmpeg compiled to WebAssembly, running in your tab. The FFmpeg core, fonts and page are all served from the same origin; the page makes no third-party requests (an end-to-end test asserts this). The one exception is [Vercel Web Analytics](https://vercel.com/docs/analytics) on the hosted site: cookieless, anonymous page-view counts that never include audio or file names. It is off on localhost, so forks and local runs send nothing. The only thing stored on your device is your theme choice.
+Audio is decoded and cut by FFmpeg compiled to WebAssembly, running in your tab. The FFmpeg core, fonts and page are all served from the same origin; the page makes no third-party requests (an end-to-end test asserts this). The one exception is [Vercel Web Analytics](https://vercel.com/docs/analytics) on the hosted site: cookieless, anonymous page-view counts that never include audio or file names. It is off on localhost, so forks and local runs send nothing. The service worker keeps the app and the FFmpeg core in your browser cache so it works offline; the only other things stored are your theme choice and whether you closed the install popup. Audio is never stored.
 
 ## Run it locally
 

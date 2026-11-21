@@ -5,15 +5,15 @@
  * docs/ARCHITECTURE.md).
  */
 export const BRAND = {
-  name: 'AudioSlice',
+  name: 'Cutmark',
   tagline: 'Cut audio where it should be cut.',
   description:
     'Cut, split, trim and time-mark MP3, WAV, M4A and other audio files entirely in your browser. No uploads, no account, no server.',
-  repoUrl: 'https://github.com/irajeshegde/AudioSlice',
-  siteUrl: 'https://audio-slice.vercel.app',
+  repoUrl: 'https://github.com/irajeshegde/Cutmark',
+  siteUrl: 'https://cutmark.vercel.app',
   license: 'MIT',
   /** Used for localStorage keys and ZIP manifest text. */
-  slug: 'audioslice',
+  slug: 'cutmark',
 } as const;
 
 export const REPO_LINKS = {
