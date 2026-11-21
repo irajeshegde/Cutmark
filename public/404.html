@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="robots" content="noindex" />
+    <title>Page not found · Cutmark</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <style>
+      :root { --paper: #f5f0e6; --ink: #1c1a16; --ink2: #5a5449; --accent: #d2381a; --line: #d9d1c0; }
+      @media (prefers-color-scheme: dark) {
+        :root { --paper: #14120f; --ink: #f1ece1; --ink2: #b3aa99; --accent: #ff6a45; --line: #3a352c; }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px;
+        background: var(--paper); color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main { max-width: 32rem; border: 1px solid var(--line); padding: 32px 28px; }
+      p.k { margin: 0 0 12px; font: 12px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); }
+      h1 { margin: 0; font: 400 clamp(2.2rem, 8vw, 3.2rem)/1.05 "Iowan Old Style", Georgia, "Times New Roman", serif; }
+      h1 em { color: var(--accent); }
+      p.b { margin: 16px 0 24px; line-height: 1.6; color: var(--ink2); }
+      a { display: inline-block; padding: 10px 16px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 600; font-size: 15px; }
+      a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="k">Error 404</p>
+      <h1>That cut <em>doesn’t exist</em>.</h1>
+      <p class="b">There is no page at this address. Cutmark lives on the home page, and your audio never leaves your device.</p>
+      <a href="/">Back to Cutmark</a>
+    </main>
+  </body>
+</html>

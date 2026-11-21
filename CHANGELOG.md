@@ -15,6 +15,7 @@ A ground-up rewrite. See [docs/REVIEW.md](docs/REVIEW.md) for the findings behin
 - Animated landing page, Guide, Capabilities and About pages; footer with AI disclosure and contributing links.
 - Mobile layout with 44 px touch targets and a sticky export bar.
 - Installable, offline-capable PWA: install popup plus a footer control (and iPhone steps), service worker for the app shell, the 32 MB audio engine cached on first use or via "Save for offline use", updates that wait for a reload.
+- Own `404.html`, `favicon.ico` and `robots.txt`, so no host-default error page or icon ever shows.
 - `vercel.json`: the old audio-slice.vercel.app address redirects to cutmark.vercel.app.
 - Vercel Web Analytics (cookieless page views, off on localhost); `npm run brand-images` regenerates the Open Graph image and app icons from the brand tokens.
 - Unit, component and browser (Playwright) tests; CI; CONTRIBUTING, Code of Conduct, issue and PR templates.

@@ -13,7 +13,7 @@ export default defineConfig({
       // update can never wipe clips they are in the middle of editing.
       registerType: 'prompt',
       injectRegister: false, // registered by hand in src/main.tsx
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
         name: 'Cutmark',
@@ -37,7 +37,7 @@ export default defineConfig({
         // App shell only. The 32 MB FFmpeg core is cached on demand (see runtimeCaching),
         // so a first visit does not download it unless the person opens the editor.
         globPatterns: ['**/*.{js,css,html,svg,woff,woff2}', 'icon-192.png', 'apple-touch-icon.png'],
-        globIgnores: ['ffmpeg/**'],
+        globIgnores: ['ffmpeg/**', '404.html'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/_vercel\//, /^\/ffmpeg\//],
         runtimeCaching: [

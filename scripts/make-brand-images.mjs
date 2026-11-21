@@ -4,13 +4,14 @@
 // Outputs (committed, served from /public):
 //   public/og-image.png          1200x630   Open Graph / Twitter / link previews
 //   public/apple-touch-icon.png  180x180    iOS home screen
+//   public/favicon.ico           48x48      legacy/default favicon request (so no host default ever shows)
 //   public/icon-192.png          192x192    PWA install icon
 //   public/icon-512.png          512x512    PWA install icon / store listings
 //   public/icon-maskable-512.png 512x512    PWA maskable icon (art inside the 80% safe zone)
 //
 // To rename the product, edit src/brand.ts and the NAME/URL constants below.
 import { chromium } from '@playwright/test';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -101,6 +102,22 @@ try {
   };
   await shot(ogHtml, 1200, 630, 'og-image.png');
   await shot(iconHtml(180), 180, 180, 'apple-touch-icon.png');
+  await shot(iconHtml(48), 48, 48, '_favicon-48.png');
+  // Wrap the 48 px PNG in a one-image ICO container (PNG-in-ICO is supported by every current browser).
+  const png = readFileSync(resolve(root, 'public', '_favicon-48.png'));
+  const header = Buffer.alloc(22);
+  header.writeUInt16LE(0, 0); // reserved
+  header.writeUInt16LE(1, 2); // type: icon
+  header.writeUInt16LE(1, 4); // one image
+  header.writeUInt8(48, 6); // width
+  header.writeUInt8(48, 7); // height
+  header.writeUInt16LE(1, 10); // colour planes
+  header.writeUInt16LE(32, 12); // bits per pixel
+  header.writeUInt32LE(png.length, 14); // image size
+  header.writeUInt32LE(22, 18); // offset to image data
+  writeFileSync(resolve(root, 'public', 'favicon.ico'), Buffer.concat([header, png]));
+  unlinkSync(resolve(root, 'public', '_favicon-48.png'));
+  console.log('wrote public/favicon.ico');
   await shot(iconHtml(192), 192, 192, 'icon-192.png');
   await shot(iconHtml(512), 512, 512, 'icon-512.png');
   await shot(maskableHtml(512), 512, 512, 'icon-maskable-512.png');
