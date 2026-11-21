@@ -13,7 +13,7 @@ export function relabel(list: EditorClip[]): EditorClip[] {
 }
 
 /**
- * Clip list with undo. One state object (not two) so undo is a pure update —
+ * Clip list with undo. One state object (not two) so undo is a pure update -
  * the previous version called setClips from inside a setState updater, which
  * React StrictMode runs twice.
  */

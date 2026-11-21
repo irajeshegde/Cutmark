@@ -41,7 +41,7 @@ test('pages: guide, capabilities and about render, and the footer discloses AI u
   for (const [link, heading] of [
     ['Guide', /two minutes/i],
     ['Capabilities', /where it stops/i],
-    ['About', /yours to change/i],
+    ['About', /open code/i],
   ] as const) {
     await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: link }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading);

@@ -6,7 +6,7 @@ export const CapabilitiesPage: React.FC = () => (
   <PageShell
     kicker="Capabilities"
     title={<>What it does, and where it <em className="text-accent-text">stops</em>.</>}
-    intro="A plain list, including the limits, so you can tell in a minute whether this is the right tool."
+    intro="What it does and what it doesn’t, so you can tell quickly whether it fits your job."
   >
     <h2>What it can do</h2>
     <h3>Cutting</h3>

@@ -64,7 +64,7 @@ export const ClipList: React.FC<ClipListProps> = ({
                     <span className="w-6 shrink-0 font-mono text-xs text-ink-3">{String(index + 1).padStart(2, '0')}</span>
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-sm text-ink">
-                        {formatPreciseTime(clip.startSec)} – {formatPreciseTime(clip.endSec)}
+                        {formatPreciseTime(clip.startSec)} to {formatPreciseTime(clip.endSec)}
                         {editing && <span className="ml-2 text-accent-text">editing</span>}
                       </p>
                       <p className="font-mono text-xs text-ink-3">{formatHumanDuration(clip.endSec - clip.startSec)}</p>

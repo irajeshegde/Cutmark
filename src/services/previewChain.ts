@@ -1,7 +1,7 @@
 import { SpoilSettings } from '../types';
 import { WOBBLE_RATE_HZ, isSpoilActive, muffleCutoffHz, noiseGain, wobbleDepth } from '../lib/spoil';
 
-/** Max pitch deviation (fraction) at wobble depth 0.9 — tuned by ear against FFmpeg's `vibrato`. */
+/** Max pitch deviation (fraction) at wobble depth 0.9: tuned by ear against FFmpeg's `vibrato`. */
 const MAX_PITCH_DEVIATION = 0.035;
 const BASE_DELAY_SEC = 0.01;
 
@@ -12,7 +12,7 @@ const BASE_DELAY_SEC = 0.01;
  * clean and the degraded sound while the track plays.
  *
  * It mirrors the export filters using the same parameter mappings from
- * lib/spoil.ts, but the DSP is Web Audio's, not FFmpeg's — treat it as a close
+ * lib/spoil.ts, but the DSP is Web Audio's, not FFmpeg's: treat it as a close
  * preview, not a bit-exact one.
  */
 export class PreviewChain {

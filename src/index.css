@@ -7,7 +7,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ==========================================================================
-   Design tokens — see docs/DESIGN_SYSTEM.md
+   Design tokens: see docs/DESIGN_SYSTEM.md
    Light = warm paper + ink. Dark = warm near-black. One accent (vermilion),
    the colour of a cut line / editor's red pencil. Components use semantic
    tokens (bg-paper, text-ink-2, border-line), never raw hex, so dark mode

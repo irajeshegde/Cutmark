@@ -71,7 +71,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ bundle, onBack, onStartO
           {bundle.spoilt && (
             <p className="mt-2 max-w-xl text-sm leading-6 text-ink-2">
               This copy has been spoilt deliberately. Press play on a file below to hear exactly what you are about to
-              share — the live preview was an approximation, this is the real export.
+              share. The live preview was an approximation; this is the real export.
             </p>
           )}
         </div>

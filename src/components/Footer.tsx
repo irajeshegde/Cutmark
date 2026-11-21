@@ -46,8 +46,8 @@ export const Footer: React.FC = () => (
           expect the occasional rough edge, and please report anything that looks wrong.
         </p>
         <p>
-          Free and open source under the {BRAND.license} license. Anyone can read the code, fork it, and send
-          improvements — <a className="underline underline-offset-2 hover:text-ink" href={REPO_LINKS.contributing} {...external}>start here</a>.
+          Free and open source under the {BRAND.license} license. Anyone can read the code, fork it and send
+          improvements. <a className="underline underline-offset-2 hover:text-ink" href={REPO_LINKS.contributing} {...external}>Start here</a>.
         </p>
       </div>
     </div>

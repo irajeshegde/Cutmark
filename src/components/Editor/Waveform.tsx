@@ -88,7 +88,7 @@ export const Waveform = forwardRef<WaveformHandle, WaveformProps>((props, ref) =
 
     ws.on('ready', (duration) => {
       // Measure wavesurfer's own scroll element (inside its shadow root), not our
-      // padded container — its available width is narrower.
+      // padded container: its available width is narrower.
       const scrollEl = containerRef.current?.firstElementChild as HTMLElement | undefined;
       const innerWidth = scrollEl?.shadowRoot?.querySelector('.scroll')?.clientWidth ?? containerRef.current?.clientWidth ?? 0;
       const fitPxPerSec = duration > 0 && innerWidth > 0 ? innerWidth / duration : 10;

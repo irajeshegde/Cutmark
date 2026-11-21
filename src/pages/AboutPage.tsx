@@ -7,13 +7,13 @@ const ext = { target: '_blank', rel: 'noopener noreferrer' } as const;
 export const AboutPage: React.FC = () => (
   <PageShell
     kicker="About"
-    title={<>Free, open, and <em className="text-accent-text">yours to change</em>.</>}
+    title={<>Small tool, <em className="text-accent-text">open code</em>.</>}
     intro={`${BRAND.name} is a small tool for cutting audio without uploading it anywhere. It is open source and anyone can help improve it.`}
   >
     <h2>Why it exists</h2>
     <p>
       Cutting a clip out of a song or a long recording usually means installing an editor, or sending your file to a website you have to
-      trust. {BRAND.name} does the job in the browser tab, with an emphasis on finding the cut point by ear, to the millisecond.
+      trust. {BRAND.name} does the job in the browser tab, and it is built around finding the cut point by ear, to the millisecond.
     </p>
 
     <h2>Open source</h2>
@@ -24,10 +24,10 @@ export const AboutPage: React.FC = () => (
 
     <h2>Built with AI</h2>
     <p>
-      This site, including the code, the tests, the design and this text, was written largely by an AI assistant (Claude, through Claude
-      Code). A human maintainer set the direction, decided what to build, and reviews and tests the result. That is worth knowing
-      because AI-written code can contain mistakes that look convincing. It has automated tests and was checked in a real browser, but it
-      has not had the years of use a mature editor has. If something sounds or behaves wrong, please tell us.
+      Most of this site, the code, the tests, the design and this text, was written by an AI assistant (Claude, through Claude
+      Code). A human maintainer decides what to build and reviews and tests the result. AI-written code can have mistakes that look
+      convincing. This has automated tests and was checked in a real browser, but it hasn't had the years of use a mature editor has.
+      If something sounds or behaves wrong, tell us.
     </p>
     <p>Contributions are welcome whether or not you use AI tools yourself. The contributing guide asks only that you understand and test what you submit.</p>
 

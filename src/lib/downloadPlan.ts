@@ -7,7 +7,7 @@ export type DownloadPlan =
 
 /**
  * One output file downloads directly. Several files download as one ZIP and
- * nothing else — no per-file buttons, no auto-download.
+ * nothing else: no per-file buttons, no auto-download.
  */
 export function planDownload(bundle: OutputBundle): DownloadPlan {
   if (bundle.files.length === 0) return { kind: 'empty' };

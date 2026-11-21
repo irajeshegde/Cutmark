@@ -77,7 +77,7 @@ export interface NameParts {
   spoilt: boolean;
 }
 
-/** `{stem}_{date}[_vN][_spoilt]` — shared by every file and the ZIP of one export. */
+/** `{stem}_{date}[_vN][_spoilt]`: shared by every file and the ZIP of one export. */
 export function buildBaseName({ stem, dateStamp, version, spoilt }: NameParts): string {
   let name = `${stem}_${dateStamp}`;
   if (version > 1) name += `_v${version}`;

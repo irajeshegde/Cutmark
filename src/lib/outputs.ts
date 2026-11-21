@@ -11,7 +11,7 @@ import {
 import { buildZip } from '../services/zipService';
 
 export interface PackageOptions {
-  /** Original file name, e.g. "My Song.mp3" — used for the stem. */
+  /** Original file name, e.g. "My Song.mp3": used for the stem. */
   sourceName: string;
   spoilt: boolean;
   now?: Date;

@@ -4,7 +4,7 @@ export interface ParsedTimeRange {
 }
 
 // Matches "3.16-5:14", "8.02 - 8.55", "24.22-24.54", and precise variants
-// with milliseconds like "3:16.245-5:14.000" — mm.ss or mm:ss on either side
+// with milliseconds like "3:16.245-5:14.000": mm.ss or mm:ss on either side
 // of the dash (separators used interchangeably), with an optional .mmm tail
 // for sub-second precision. Anything else on the line (chat sender names,
 // dates, message timestamps) is ignored.

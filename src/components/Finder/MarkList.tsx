@@ -49,7 +49,7 @@ export const MarkList: React.FC<MarkListProps> = ({ marks, onRemoveMark, onPrevi
               <li key={mark.id} className="flex items-center gap-3 px-4 py-3">
                 <span className="w-6 shrink-0 font-mono text-xs text-ink-3">{String(i + 1).padStart(2, '0')}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-sm text-ink">{formatPreciseTime(mark.startSec)} – {formatPreciseTime(mark.endSec)}</p>
+                  <p className="font-mono text-sm text-ink">{formatPreciseTime(mark.startSec)} to {formatPreciseTime(mark.endSec)}</p>
                   <p className="font-mono text-xs text-ink-3">{formatHumanDuration(mark.endSec - mark.startSec)}</p>
                 </div>
                 <button

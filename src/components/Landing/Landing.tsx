@@ -67,8 +67,8 @@ export const Landing: React.FC<LandingProps> = ({ onFileSelected, isLoading, err
         <h2 className="font-display text-3xl leading-tight">Your file never leaves the tab.</h2>
         <p className="mt-3 text-[15px] leading-7 text-ink-2">
           Decoding and cutting run on your own machine through FFmpeg compiled to WebAssembly. The engine, the fonts and
-          the page are all served from this site — there are no third-party requests while you work, only an anonymous page-view counter — and when you close
-          the tab, the audio is gone.
+          the page all come from this site. While you work there are no third-party requests, only an anonymous page-view
+          counter. Close the tab and the audio is gone.
         </p>
       </div>
       <div>

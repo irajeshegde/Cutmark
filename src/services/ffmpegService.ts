@@ -109,7 +109,7 @@ export async function withFFmpeg<T>(signal: AbortSignal | undefined, fn: (ffmpeg
   }
 }
 
-/** ffmpeg.exec resolves with the exit code instead of throwing — turn failures into errors. */
+/** ffmpeg.exec resolves with the exit code instead of throwing: turn failures into errors. */
 export async function execChecked(ffmpeg: FFmpeg, args: string[]): Promise<void> {
   const code = await ffmpeg.exec(['-y', ...args]);
   if (code !== 0) throw new Error(`FFmpeg failed (exit code ${code}).`);

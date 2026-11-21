@@ -85,7 +85,7 @@ export function formatHz(hz: number): string {
 
 /**
  * Rough guide to how damaged the audio will sound. It is a heuristic (muffling
- * is the most audible, wobble next, hiss least on its own) — listen with the
+ * is the most audible, wobble next, hiss least on its own): listen with the
  * live Original/Spoilt switch for the real judgement.
  */
 export function describeSeverity(s: SpoilSettings): Severity {

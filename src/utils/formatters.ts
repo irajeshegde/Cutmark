@@ -70,7 +70,7 @@ export function formatMinutesSeconds(seconds: number): string {
 }
 
 /**
- * Format time in seconds to mm:ss.mmm — precise, round-trippable through
+ * Format time in seconds to mm:ss.mmm: precise, round-trippable through
  * parseTimeOrRangeInput/parseTimestampRanges for marking exact cut points.
  */
 export function formatPreciseTime(seconds: number): string {
