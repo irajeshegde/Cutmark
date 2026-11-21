@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -10,6 +10,7 @@ import { useHashRoute } from './hooks/useHashRoute';
 import { GuidePage } from './pages/GuidePage';
 import { CapabilitiesPage } from './pages/CapabilitiesPage';
 import { AboutPage } from './pages/AboutPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { terminateFFmpeg } from './services/ffmpegService';
 
 // The workspace pulls in wavesurfer and the export pipeline; keep it off the landing page's critical path.
@@ -20,6 +21,12 @@ export default function App() {
   const [fileDetails, setFileDetails] = useState<AudioFileDetails | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
+
+  // The tab title says so when a link goes nowhere (the static title covers every other route).
+  useEffect(() => {
+    const base = 'Cutmark: cut, split and time-mark audio in your browser';
+    document.title = route === 'notfound' ? 'Page not found · Cutmark' : base;
+  }, [route]);
 
   const handleFileSelected = useCallback(async (file: File) => {
     setIsReading(true);
@@ -54,6 +61,7 @@ export default function App() {
         {route === 'guide' && <GuidePage />}
         {route === 'capabilities' && <CapabilitiesPage />}
         {route === 'about' && <AboutPage />}
+        {route === 'notfound' && <NotFoundPage />}
 
         {route === 'home' &&
           (fileDetails ? (

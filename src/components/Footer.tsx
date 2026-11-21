@@ -6,7 +6,9 @@ import { AppControls } from './AppControls';
 
 const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
 
-export const Footer: React.FC = () => (
+export const Footer: React.FC = () => {
+  const year = new Date().getFullYear(); // never hard-code: it would be wrong every January
+  return (
   <footer className="mt-20 border-t border-line">
     <div className="mx-auto grid max-w-5xl gap-10 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
       <div className="space-y-3">
@@ -52,7 +54,9 @@ export const Footer: React.FC = () => (
           Free and open source under the {BRAND.license} license. Anyone can read the code, fork it and send
           improvements. <a className="underline underline-offset-2 hover:text-ink" href={REPO_LINKS.contributing} {...external}>Start here</a>.
         </p>
+        <p data-testid="copyright">&copy; {year} {BRAND.name} contributors.</p>
       </div>
     </div>
   </footer>
-);
+  );
+};

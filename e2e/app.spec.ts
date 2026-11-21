@@ -48,6 +48,34 @@ test('pages: guide, capabilities and about render, and the footer discloses AI u
   }
 });
 
+test('unknown route shows a 404 page with its illustration, and the skip link does not trigger it', async ({ page }) => {
+  await page.goto('/#/no-such-page');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText("doesn’t exist");
+  await expect(page.getByRole('img', { name: /missing section/i })).toBeVisible();
+  await expect(page).toHaveTitle(/page not found/i);
+  await page.getByRole('link', { name: 'Open a file' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('exactly');
+  await expect(page).toHaveTitle(/cutmark/i);
+
+  // the skip link sets the hash to #main: that is an anchor, not a missing page
+  await page.getByRole('link', { name: 'Skip to content' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('exactly');
+});
+
+test('static 404.html exists, has its illustration, and shows the current year', async ({ page, request }) => {
+  const res = await request.get('/404.html');
+  expect(res.ok()).toBe(true);
+  await page.goto('/404.html');
+  await expect(page.getByRole('img', { name: /missing section/i })).toBeVisible();
+  await expect(page.getByText(`© ${new Date().getFullYear()} Cutmark contributors`)).toBeVisible();
+});
+
+test('footer shows the current year', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('copyright')).toContainText(`© ${new Date().getFullYear()} Cutmark contributors`);
+});
+
 test('single clip exports and downloads as one plain file, named with the date and no part suffix', async ({ page }) => {
   await openFile(page);
   await selectRange(page, '00:04.000', '00:10.500');

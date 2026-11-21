@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export type Route = 'home' | 'guide' | 'capabilities' | 'about';
+export type Route = 'home' | 'guide' | 'capabilities' | 'about' | 'notfound';
 
 const ROUTES: Record<string, Route> = {
   '#/guide': 'guide',
@@ -8,8 +8,15 @@ const ROUTES: Record<string, Route> = {
   '#/about': 'about',
 };
 
+/**
+ * Plain anchors such as the skip link's "#main" are not routes and must not leave the page.
+ * Only "#/something" that we do not know is a missing page.
+ */
 export function parseRoute(hash: string): Route {
-  return ROUTES[hash] ?? 'home';
+  if (!hash.startsWith('#/')) return 'home';
+  const clean = hash.length > 2 ? hash.replace(/\/+$/, '') : hash; // "#/guide/" is "#/guide"
+  if (clean === '#/') return 'home';
+  return ROUTES[clean] ?? 'notfound';
 }
 
 export function routeHref(route: Route): string {

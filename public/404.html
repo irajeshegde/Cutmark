@@ -9,9 +9,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <style>
-      :root { --paper: #f5f0e6; --ink: #1c1a16; --ink2: #5a5449; --accent: #d2381a; --line: #d9d1c0; }
+      :root { --paper: #f5f0e6; --ink: #1c1a16; --ink2: #5a5449; --accent: #d2381a; --line: #d9d1c0; --line-strong: #b9ae95; }
       @media (prefers-color-scheme: dark) {
-        :root { --paper: #14120f; --ink: #f1ece1; --ink2: #b3aa99; --accent: #ff6a45; --line: #3a352c; }
+        :root { --paper: #14120f; --ink: #f1ece1; --ink2: #b3aa99; --accent: #ff6a45; --line: #3a352c; --line-strong: #544e41; }
       }
       * { box-sizing: border-box; }
       body {
@@ -19,12 +19,14 @@
         background: var(--paper); color: var(--ink);
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       }
-      main { max-width: 32rem; border: 1px solid var(--line); padding: 32px 28px; }
+      main { max-width: 40rem; border: 1px solid var(--line); padding: 32px 28px; }
       p.k { margin: 0 0 12px; font: 12px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--ink2); }
       h1 { margin: 0; font: 400 clamp(2.2rem, 8vw, 3.2rem)/1.05 "Iowan Old Style", Georgia, "Times New Roman", serif; }
       h1 em { color: var(--accent); }
+      figure { margin: 28px 0 0; padding: 20px 16px 12px; border: 1px solid var(--line); background: rgba(127,127,127,.06); }
       p.b { margin: 16px 0 24px; line-height: 1.6; color: var(--ink2); }
       a { display: inline-block; padding: 10px 16px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 600; font-size: 15px; }
+      p.y { margin: 24px 0 0; font-size: 12px; color: var(--ink2); }
       a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     </style>
   </head>
@@ -32,8 +34,11 @@
     <main>
       <p class="k">Error 404</p>
       <h1>That cut <em>doesn’t exist</em>.</h1>
-      <p class="b">There is no page at this address. Cutmark lives on the home page, and your audio never leaves your device.</p>
-      <a href="/">Back to Cutmark</a>
+      <p class="b">There is no page at this address. It may have moved, or the link may have a typo.</p>
+      <figure><svg viewBox="-10 -14 660 178" role="img" aria-label="A waveform with a missing section between two cut lines" width="100%"><rect x="0" y="46" width="5" height="58" rx="2" fill="var(--ink)"/><rect x="10" y="23" width="5" height="104" rx="2" fill="var(--ink)"/><rect x="20" y="47.5" width="5" height="55" rx="2" fill="var(--ink)"/><rect x="30" y="48.5" width="5" height="53" rx="2" fill="var(--ink)"/><rect x="40" y="43.5" width="5" height="63" rx="2" fill="var(--ink)"/><rect x="50" y="52.5" width="5" height="45" rx="2" fill="var(--ink)"/><rect x="60" y="24" width="5" height="102" rx="2" fill="var(--ink)"/><rect x="70" y="23.5" width="5" height="103" rx="2" fill="var(--ink)"/><rect x="80" y="63" width="5" height="24" rx="2" fill="var(--ink)"/><rect x="90" y="49.5" width="5" height="51" rx="2" fill="var(--ink)"/><rect x="100" y="32.5" width="5" height="85" rx="2" fill="var(--ink)"/><rect x="110" y="43.5" width="5" height="63" rx="2" fill="var(--ink)"/><rect x="120" y="34.5" width="5" height="81" rx="2" fill="var(--ink)"/><rect x="130" y="48" width="5" height="54" rx="2" fill="var(--ink)"/><rect x="140" y="67" width="5" height="16" rx="2" fill="var(--ink)"/><rect x="150" y="43" width="5" height="64" rx="2" fill="var(--ink)"/><rect x="160" y="39.5" width="5" height="71" rx="2" fill="var(--ink)"/><rect x="170" y="58" width="5" height="34" rx="2" fill="var(--ink)"/><rect x="180" y="56.5" width="5" height="37" rx="2" fill="var(--ink)"/><rect x="190" y="59.5" width="5" height="31" rx="2" fill="var(--ink)"/><rect x="200" y="62" width="5" height="26" rx="2" fill="var(--ink)"/><rect x="210" y="54" width="5" height="42" rx="2" fill="var(--ink)"/><rect x="220" y="60" width="5" height="30" rx="2" fill="var(--ink)"/><rect x="230" y="67.5" width="5" height="15" rx="2" fill="var(--ink)"/><rect x="240" y="64" width="5" height="22" rx="2" fill="var(--ink)"/><rect x="250" y="64" width="5" height="22" rx="2" fill="var(--ink)"/><rect x="260" y="65" width="5" height="20" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="270" y="64" width="5" height="22" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="280" y="66.5" width="5" height="17" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="290" y="67.5" width="5" height="15" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="300" y="61.5" width="5" height="27" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="310" y="60.5" width="5" height="29" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="320" y="64" width="5" height="22" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="330" y="60.5" width="5" height="29" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="340" y="63" width="5" height="24" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="350" y="59" width="5" height="32" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="360" y="43" width="5" height="64" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="370" y="54.5" width="5" height="41" rx="2" fill="none" stroke="var(--line-strong)" stroke-dasharray="3 3"/><rect x="380" y="64.5" width="5" height="21" rx="2" fill="var(--ink)"/><rect x="390" y="47" width="5" height="56" rx="2" fill="var(--ink)"/><rect x="400" y="46.5" width="5" height="57" rx="2" fill="var(--ink)"/><rect x="410" y="42" width="5" height="66" rx="2" fill="var(--ink)"/><rect x="420" y="32.5" width="5" height="85" rx="2" fill="var(--ink)"/><rect x="430" y="60.5" width="5" height="29" rx="2" fill="var(--ink)"/><rect x="440" y="57" width="5" height="36" rx="2" fill="var(--ink)"/><rect x="450" y="21" width="5" height="108" rx="2" fill="var(--ink)"/><rect x="460" y="35.5" width="5" height="79" rx="2" fill="var(--ink)"/><rect x="470" y="46" width="5" height="58" rx="2" fill="var(--ink)"/><rect x="480" y="40" width="5" height="70" rx="2" fill="var(--ink)"/><rect x="490" y="57" width="5" height="36" rx="2" fill="var(--ink)"/><rect x="500" y="37" width="5" height="76" rx="2" fill="var(--ink)"/><rect x="510" y="17.5" width="5" height="115" rx="2" fill="var(--ink)"/><rect x="520" y="53" width="5" height="44" rx="2" fill="var(--ink)"/><rect x="530" y="58.5" width="5" height="33" rx="2" fill="var(--ink)"/><rect x="540" y="41" width="5" height="68" rx="2" fill="var(--ink)"/><rect x="550" y="48.5" width="5" height="53" rx="2" fill="var(--ink)"/><rect x="560" y="41.5" width="5" height="67" rx="2" fill="var(--ink)"/><rect x="570" y="44.5" width="5" height="61" rx="2" fill="var(--ink)"/><rect x="580" y="67" width="5" height="16" rx="2" fill="var(--ink)"/><rect x="590" y="57.5" width="5" height="35" rx="2" fill="var(--ink)"/><rect x="600" y="47.5" width="5" height="55" rx="2" fill="var(--ink)"/><rect x="610" y="58.5" width="5" height="33" rx="2" fill="var(--ink)"/><rect x="620" y="60.5" width="5" height="29" rx="2" fill="var(--ink)"/><rect x="630" y="62" width="5" height="26" rx="2" fill="var(--ink)"/><line x1="257.5" x2="257.5" y1="-8" y2="158" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 5"/><line x1="377.5" x2="377.5" y1="-8" y2="158" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 5"/></svg></figure>
+      <p class="b" style="margin-top:24px"><a href="/">Back to Cutmark</a></p>
+      <p class="y">&copy; <span id="y">2026</span> Cutmark contributors.</p>
     </main>
+    <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
   </body>
 </html>

@@ -6,6 +6,7 @@ import { ModeSelect } from '../src/components/ModeSelect';
 import { ResultView } from '../src/components/ResultView';
 import { SpoilPanel } from '../src/components/SpoilPanel';
 import { Footer } from '../src/components/Footer';
+import { NotFoundPage } from '../src/pages/NotFoundPage';
 import { NO_SPOIL, applyPreset } from '../src/lib/spoil';
 import { OutputBundle, OutputFile } from '../src/types';
 import { parseRoute } from '../src/hooks/useHashRoute';
@@ -168,6 +169,31 @@ describe('Footer', () => {
     expect(screen.getByText(/open source under the MIT license/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /source on github/i })).toHaveAttribute('href', expect.stringContaining('github.com'));
   });
+
+  it('shows the current year, computed at render time rather than hard-coded', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2031-06-15T12:00:00Z'));
+      const { unmount } = render(<Footer />);
+      expect(screen.getByTestId('copyright')).toHaveTextContent('© 2031 Cutmark contributors');
+      unmount();
+      vi.setSystemTime(new Date('2040-01-01T00:00:00Z'));
+      render(<Footer />);
+      expect(screen.getByTestId('copyright')).toHaveTextContent('© 2040 Cutmark contributors');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('NotFoundPage', () => {
+  it('explains the miss, shows the illustration, and offers ways back', () => {
+    render(<NotFoundPage />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/doesn.t exist/i);
+    expect(screen.getByRole('img', { name: /missing section/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /open a file/i })).toHaveAttribute('href', '#/');
+    expect(screen.getByRole('link', { name: /how to use it/i })).toHaveAttribute('href', '#/guide');
+  });
 });
 
 describe('parseRoute', () => {
@@ -176,6 +202,13 @@ describe('parseRoute', () => {
     expect(parseRoute('#/capabilities')).toBe('capabilities');
     expect(parseRoute('#/about')).toBe('about');
     expect(parseRoute('')).toBe('home');
-    expect(parseRoute('#/nonsense')).toBe('home');
+    expect(parseRoute('#/')).toBe('home');
+    expect(parseRoute('#/guide/')).toBe('guide');
+  });
+
+  it('treats an unknown #/path as not found, but leaves plain anchors like the skip link alone', () => {
+    expect(parseRoute('#/nonsense')).toBe('notfound');
+    expect(parseRoute('#/guide/extra')).toBe('notfound');
+    expect(parseRoute('#main')).toBe('home');
   });
 });

@@ -5,6 +5,9 @@
       "has": [{ "type": "host", "value": "audio-slice.vercel.app" }],
       "destination": "https://cutmark.vercel.app/:path",
       "permanent": true
-    }
+    },
+    { "source": "/guide", "destination": "/#/guide", "permanent": true },
+    { "source": "/capabilities", "destination": "/#/capabilities", "permanent": true },
+    { "source": "/about", "destination": "/#/about", "permanent": true }
   ]
 }

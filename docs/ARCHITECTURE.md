@@ -53,7 +53,7 @@ Static site on Vercel; pushing to `main` deploys to production. `vercel.json` pe
 
 ## Routing
 
-`hooks/useHashRoute.ts`: `#/`, `#/guide`, `#/capabilities`, `#/about`. Hash routing needs no rewrite rules on a static host.
+`hooks/useHashRoute.ts`: `#/`, `#/guide`, `#/capabilities`, `#/about`, and anything else under `#/` is the `notfound` route (plain anchors like the skip link's `#main` are not routes and stay on the current page). Hash routing needs no rewrite rules on a static host.
 
 ## Testing
 
