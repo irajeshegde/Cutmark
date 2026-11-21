@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "audio-slice.vercel.app" }],
+      "destination": "https://cutmark.vercel.app/:path",
+      "permanent": true
+    }
+  ]
+}

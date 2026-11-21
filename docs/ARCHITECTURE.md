@@ -47,6 +47,10 @@ The preview is close to, not bit-identical with, FFmpeg's output; the result vie
 - Icons come from `npm run brand-images`, including a maskable icon with the mark inside the 80% safe zone.
 - `e2e/pwa.spec.ts` covers the manifest, opening offline, cutting and downloading offline, and the popup/footer flow. Install itself cannot be automated; the test dispatches a synthetic `beforeinstallprompt`.
 
+## Hosting
+
+Static site on Vercel; pushing to `main` deploys to production. `vercel.json` permanently redirects the old `audio-slice.vercel.app` host to `cutmark.vercel.app` (path kept). The rule matches the old host only, so the new host can never loop. Remove it if the old domain is ever released.
+
 ## Routing
 
 `hooks/useHashRoute.ts`: `#/`, `#/guide`, `#/capabilities`, `#/about`. Hash routing needs no rewrite rules on a static host.
