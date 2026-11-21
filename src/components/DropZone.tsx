@@ -1,118 +1,97 @@
 import React, { useRef, useState } from 'react';
-import { Upload, Music, FileAudio, AlertCircle } from 'lucide-react';
+import { AlertCircle, FileUp, Loader2 } from 'lucide-react';
 import { formatFileSize } from '../utils/formatters';
 import { MAX_FILE_SIZE_BYTES, SUPPORTED_AUDIO_EXTENSIONS } from '../utils/constants';
+import { validateAudioFile } from '../lib/validateFile';
 
 interface DropZoneProps {
   onFileSelected: (file: File) => void;
   isLoading?: boolean;
+  /** Error from reading a file the browser accepted but could not decode. */
+  externalError?: string | null;
 }
 
-export const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, isLoading }) => {
+export const DropZone: React.FC<DropZoneProps> = ({ onFileSelected, isLoading, externalError }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
 
-  const validateAndProcess = (file: File) => {
-    setErrorMsg(null);
-    const ext = file.name.split('.').pop()?.toLowerCase();
-
-    const isValidExt = ext && SUPPORTED_AUDIO_EXTENSIONS.includes(ext);
-    const isValidMime =
-      file.type.startsWith('audio/') || file.type === 'video/mp4' || file.type === 'video/x-m4a' || file.type === 'video/webm';
-
-    if (!isValidExt && !isValidMime) {
-      setErrorMsg(`Unsupported file type (.${ext || 'unknown'}). Please upload an audio file.`);
-      return;
-    }
-
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setErrorMsg(
-        `File too large (${formatFileSize(file.size)}). Max supported size is ${formatFileSize(MAX_FILE_SIZE_BYTES)} — processing happens in browser tab memory.`
-      );
-      return;
-    }
-
-    onFileSelected(file);
+  const handleFile = (file: File | undefined) => {
+    if (!file) return;
+    const problem = validateAudioFile(file);
+    setError(problem);
+    if (!problem) onFileSelected(file);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      validateAndProcess(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      validateAndProcess(e.target.files[0]);
-    }
-  };
+  const shownError = error ?? externalError ?? null;
 
   return (
     <div className="w-full">
-      <div
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative group cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-200 p-8 sm:p-12 text-center flex flex-col items-center justify-center ${
+      <button
+        type="button"
+        disabled={isLoading}
+        onClick={() => inputRef.current?.click()}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          dragDepth.current += 1;
+          setIsDragging(true);
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setIsDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          dragDepth.current = 0;
+          setIsDragging(false);
+          handleFile(e.dataTransfer.files?.[0]);
+        }}
+        aria-describedby="dropzone-hint"
+        className={`group flex w-full cursor-pointer flex-col items-center gap-3 border-2 border-dashed px-6 py-12 text-center transition-colors sm:py-14 ${
           isDragging
-            ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10 scale-[1.01]'
-            : 'border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/60 bg-slate-50/30 dark:bg-slate-900/40 hover:bg-slate-50/80 dark:hover:bg-slate-900/70 shadow-[0_4px_20px_rgb(0,0,0,0.02)]'
-        } ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+            ? 'border-accent bg-accent-wash'
+            : 'border-line-strong bg-surface hover:border-ink hover:bg-sunk'
+        } rounded-cut disabled:cursor-wait disabled:opacity-60`}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={`audio/*,${SUPPORTED_AUDIO_EXTENSIONS.map((e) => `.${e}`).join(',')}`}
-          onChange={handleFileChange}
-          className="hidden"
-        />
-
-        <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center mb-4 group-hover:scale-105 group-hover:border-indigo-200 dark:group-hover:border-indigo-500/60 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-all duration-200 shadow-xs">
-          <Upload className="w-7 h-7 stroke-[1.8]" />
-        </div>
-
-        <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100 mb-1">
-          Drop your audio file here, or <span className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 font-semibold">browse</span>
-        </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-6">
-          Supports MP3, WAV, M4A, FLAC, OGG, and most other audio formats, up to {formatFileSize(MAX_FILE_SIZE_BYTES)}.
-        </p>
-
-        <div className="flex flex-wrap justify-center items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/60 dark:border-slate-700 shadow-2xs">
-            <FileAudio className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" /> Lossy (MP3, AAC, OGG...)
+        {isLoading ? (
+          <Loader2 className="h-8 w-8 animate-spin text-accent-text" aria-hidden="true" />
+        ) : (
+          <FileUp className="h-8 w-8 text-ink-2 transition-colors group-hover:text-accent-text" strokeWidth={1.5} aria-hidden="true" />
+        )}
+        <span className="font-display text-3xl leading-tight text-ink sm:text-4xl">
+          {isLoading ? 'Reading your file…' : isDragging ? 'Drop it here' : 'Drop an audio file here'}
+        </span>
+        {!isLoading && (
+          <span className="text-sm text-ink-2">
+            or <span className="font-medium text-accent-text underline underline-offset-2">choose a file</span> from your device
           </span>
-          <span className="flex items-center gap-1 bg-white dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/60 dark:border-slate-700 shadow-2xs">
-            <Music className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" /> Lossless (WAV, FLAC...)
-          </span>
-        </div>
-      </div>
+        )}
+        <span id="dropzone-hint" className="font-mono text-xs text-ink-3">
+          MP3 · WAV · M4A · FLAC · OGG · and most others · up to {formatFileSize(MAX_FILE_SIZE_BYTES)} · stays on this device
+        </span>
+      </button>
 
-      {errorMsg && (
-        <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-xl text-rose-800 dark:text-rose-300 text-sm flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold">Invalid File Selected</p>
-            <p className="text-rose-700 dark:text-rose-300/90 mt-0.5">{errorMsg}</p>
-          </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={`audio/*,${SUPPORTED_AUDIO_EXTENSIONS.map((e) => `.${e}`).join(',')}`}
+        onChange={(e) => {
+          handleFile(e.target.files?.[0]);
+          e.target.value = ''; // allow picking the same file again
+        }}
+        className="sr-only"
+        tabIndex={-1}
+        aria-label="Choose an audio file"
+        data-testid="file-input"
+      />
+
+      {shownError && (
+        <div role="alert" className="mt-3 flex items-start gap-2.5 rounded-cut border border-accent bg-accent-wash px-4 py-3 text-sm text-ink">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-accent-text" aria-hidden="true" />
+          <p>{shownError}</p>
         </div>
       )}
     </div>

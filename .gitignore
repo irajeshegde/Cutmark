@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+# ffmpeg core is copied from node_modules by scripts/copy-ffmpeg-core.mjs
+public/ffmpeg/
+.claude/
+test-results/
+playwright-report/

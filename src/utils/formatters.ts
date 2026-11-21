@@ -85,22 +85,14 @@ export function formatPreciseTime(seconds: number): string {
  * Format file size in bytes to MB/GB
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (!bytes || bytes < 0) return '0 B';
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(k)));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1))} ${sizes[i]}`;
 }
 
-/**
- * Sanitize filename to remove illegal characters and get base name + extension
- */
-export function getFileExtensionAndBase(filename: string): { baseName: string; extension: string } {
-  const lastDot = filename.lastIndexOf('.');
-  if (lastDot === -1) {
-    return { baseName: filename.replace(/[^a-zA-Z0-9_-]/g, '_'), extension: 'mp3' };
-  }
-  const baseName = filename.substring(0, lastDot).replace(/[^a-zA-Z0-9_-]/g, '_');
-  const extension = filename.substring(lastDot + 1).toLowerCase();
-  return { baseName: baseName || 'audio', extension };
+/** Bytes of RAM needed to hold the decoded track (32-bit float, interleaved) for waveform drawing. */
+export function estimateDecodeBytes(durationSeconds: number, sampleRate = 44100, channels = 2): number {
+  return Math.max(0, Math.round(durationSeconds * sampleRate * channels * 4));
 }

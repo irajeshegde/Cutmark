@@ -1,7 +1,7 @@
 import React from 'react';
+import { ArrowDown, ArrowUp, Link2, Pause, Pencil, Play, Trash2, Undo2 } from 'lucide-react';
 import { EditorClip } from '../../types';
-import { formatHumanDuration, formatTimestampRange } from '../../utils/formatters';
-import { ArrowDown, ArrowUp, Layers, Link2, Pause, Pencil, Play, Trash2, Undo2 } from 'lucide-react';
+import { formatHumanDuration, formatPreciseTime } from '../../utils/formatters';
 import { MAX_GAIN_DB, MIN_GAIN_DB } from '../../utils/constants';
 
 interface ClipListProps {
@@ -17,9 +17,9 @@ interface ClipListProps {
   editingClipId: string | null;
   onUndo: () => void;
   canUndo: boolean;
-  onExport: () => void;
-  isExporting: boolean;
 }
+
+const iconBtn = 'btn btn-quiet btn-icon';
 
 export const ClipList: React.FC<ClipListProps> = ({
   clips,
@@ -34,151 +34,108 @@ export const ClipList: React.FC<ClipListProps> = ({
   editingClipId,
   onUndo,
   canUndo,
-  onExport,
-  isExporting,
 }) => {
-  if (clips.length === 0) {
-    return (
-      <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-400 dark:text-slate-500 space-y-2">
-        <p>No clips yet. Drag a selection on the waveform, then use Extract, Delete, or Split to build your clip list.</p>
-        {canUndo && (
-          <button
-            onClick={onUndo}
-            className="inline-flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium cursor-pointer"
-          >
-            <Undo2 className="w-3.5 h-3.5" /> Undo last change
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  const listDisabled = editingClipId !== null;
+  const locked = editingClipId !== null;
 
   return (
-    <div className="border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-      <div className="bg-slate-50 dark:bg-slate-800/60 px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
-        <span className="flex items-center gap-1.5">
-          <Layers className="w-4 h-4 text-slate-400 dark:text-slate-500" /> Clip List
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onUndo}
-            disabled={!canUndo || listDisabled}
-            title="Undo last change"
-            className="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <Undo2 className="w-3.5 h-3.5" /> Undo
-          </button>
-          <span className="bg-slate-200/60 dark:bg-slate-700 px-2 py-0.5 rounded-full text-[11px] text-slate-700 dark:text-slate-200">
-            {clips.length} clip{clips.length === 1 ? '' : 's'}
-          </span>
-        </div>
-      </div>
-
-      <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-        {clips.map((clip, index) => {
-          const isPreviewing = previewingClipId === clip.id;
-          const isEditing = editingClipId === clip.id;
-
-          return (
-            <div
-              key={clip.id}
-              className={`px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-3 transition ${
-                isEditing ? 'bg-amber-50/60 dark:bg-amber-500/10' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold flex items-center justify-center text-[11px] shrink-0">
-                  {index + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-mono text-slate-800 dark:text-slate-200 font-medium truncate">
-                    {clip.label} {isEditing && <span className="text-amber-600 dark:text-amber-400">(editing)</span>}
-                  </p>
-                  <p className="text-slate-500 dark:text-slate-400">
-                    {formatTimestampRange(clip.startSec, clip.endSec - clip.startSec)} • {formatHumanDuration(clip.endSec - clip.startSec)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                <input
-                  type="range"
-                  min={MIN_GAIN_DB}
-                  max={MAX_GAIN_DB}
-                  value={clip.gainDb}
-                  disabled={listDisabled}
-                  onChange={(e) => onClipGainChange(clip.id, Number(e.target.value))}
-                  className="w-20 accent-indigo-600 disabled:opacity-40"
-                />
-                <span className="font-mono text-slate-500 dark:text-slate-400 w-12 text-right">
-                  {clip.gainDb > 0 ? '+' : ''}{clip.gainDb}dB
-                </span>
-
-                <button
-                  onClick={() => onPreviewClip(clip)}
-                  disabled={listDisabled && !isEditing}
-                  title="Play this clip"
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 disabled:opacity-30 cursor-pointer"
-                >
-                  {isPreviewing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                </button>
-                <button
-                  onClick={() => onEditClip(clip)}
-                  disabled={listDisabled}
-                  title="Re-trim this clip on the graph"
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 cursor-pointer"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onMoveClip(clip.id, 'up')}
-                  disabled={listDisabled || index === 0}
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 cursor-pointer"
-                >
-                  <ArrowUp className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onMoveClip(clip.id, 'down')}
-                  disabled={listDisabled || index === clips.length - 1}
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 cursor-pointer"
-                >
-                  <ArrowDown className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onRemoveClip(clip.id)}
-                  disabled={listDisabled}
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 disabled:opacity-30 cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="px-5 py-4 bg-slate-50/60 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={joinIntoOne}
-            onChange={(e) => onJoinToggle(e.target.checked)}
-            disabled={clips.length < 2 || listDisabled}
-            className="accent-indigo-600 w-3.5 h-3.5"
-          />
-          <Link2 className="w-3.5 h-3.5" /> Join clips into one file
-        </label>
-
-        <button
-          onClick={onExport}
-          disabled={isExporting || listDisabled}
-          className="bg-slate-900 dark:bg-indigo-600 text-white font-medium py-2.5 px-5 rounded-xl shadow-md hover:bg-slate-800 dark:hover:bg-indigo-500 transition text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Export {joinIntoOne && clips.length > 1 ? 'Joined File' : `${clips.length} File${clips.length === 1 ? '' : 's'}`}
+    <section className="panel" aria-labelledby="clips-title">
+      <div className="panel-head">
+        <h3 id="clips-title" className="text-sm font-semibold text-ink">
+          Clips <span className="ml-1 font-mono text-xs font-normal text-ink-3">{clips.length}</span>
+        </h3>
+        <button type="button" onClick={onUndo} disabled={!canUndo || locked} className="btn btn-sm btn-quiet">
+          <Undo2 className="h-3.5 w-3.5" aria-hidden="true" /> Undo
         </button>
       </div>
-    </div>
+
+      {clips.length === 0 ? (
+        <p className="px-4 py-8 text-center text-sm text-ink-3">
+          Nothing yet. Drag across the waveform to select a part, then press <strong className="font-medium text-ink-2">Keep selection</strong>.
+        </p>
+      ) : (
+        <>
+          <ol className="divide-y divide-line">
+            {clips.map((clip, index) => {
+              const previewing = previewingClipId === clip.id;
+              const editing = editingClipId === clip.id;
+              return (
+                <li key={clip.id} className={`px-4 py-3 ${editing ? 'bg-accent-wash' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 shrink-0 font-mono text-xs text-ink-3">{String(index + 1).padStart(2, '0')}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-sm text-ink">
+                        {formatPreciseTime(clip.startSec)} – {formatPreciseTime(clip.endSec)}
+                        {editing && <span className="ml-2 text-accent-text">editing</span>}
+                      </p>
+                      <p className="font-mono text-xs text-ink-3">{formatHumanDuration(clip.endSec - clip.startSec)}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center">
+                      <button
+                        type="button"
+                        className={iconBtn}
+                        onClick={() => onPreviewClip(clip)}
+                        disabled={locked && !editing}
+                        aria-label={`${previewing ? 'Pause' : 'Play'} clip ${index + 1}`}
+                      >
+                        {previewing ? <Pause className="h-4 w-4" aria-hidden="true" /> : <Play className="h-4 w-4" aria-hidden="true" />}
+                      </button>
+                      <button type="button" className={iconBtn} onClick={() => onEditClip(clip)} disabled={locked} aria-label={`Re-trim clip ${index + 1}`}>
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button type="button" className={`${iconBtn} btn-danger`} onClick={() => onRemoveClip(clip.id)} disabled={locked} aria-label={`Remove clip ${index + 1}`}>
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 pl-9">
+                    <label className="flex min-w-[11rem] flex-1 items-center gap-2 text-xs text-ink-3">
+                      <span className="w-8">Gain</span>
+                      <input
+                        type="range"
+                        min={MIN_GAIN_DB}
+                        max={MAX_GAIN_DB}
+                        value={clip.gainDb}
+                        disabled={locked}
+                        onChange={(e) => onClipGainChange(clip.id, Number(e.target.value))}
+                        className="min-w-0 flex-1"
+                        aria-label={`Gain for clip ${index + 1}`}
+                      />
+                      <span className="w-14 text-right font-mono text-ink-2 tabular-nums">
+                        {clip.gainDb > 0 ? '+' : ''}{clip.gainDb} dB
+                      </span>
+                    </label>
+                    <span className="ml-auto flex">
+                      <button type="button" className={iconBtn} onClick={() => onMoveClip(clip.id, 'up')} disabled={locked || index === 0} aria-label={`Move clip ${index + 1} up`}>
+                        <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button type="button" className={iconBtn} onClick={() => onMoveClip(clip.id, 'down')} disabled={locked || index === clips.length - 1} aria-label={`Move clip ${index + 1} down`}>
+                        <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+
+          <label className="flex cursor-pointer items-start gap-2.5 border-t border-line px-4 py-3 text-sm text-ink-2">
+            <input
+              type="checkbox"
+              checked={joinIntoOne}
+              onChange={(e) => onJoinToggle(e.target.checked)}
+              disabled={clips.length < 2 || locked}
+              className="mt-1 h-4 w-4"
+            />
+            <span>
+              <span className="flex items-center gap-1.5 font-medium text-ink"><Link2 className="h-3.5 w-3.5" aria-hidden="true" /> Join into one file</span>
+              <span className="block text-xs text-ink-3">
+                {clips.length < 2 ? 'Needs two or more clips.' : joinIntoOne ? 'You get one file, clips in this order.' : `You get ${clips.length} files in one ZIP.`}
+              </span>
+            </span>
+          </label>
+        </>
+      )}
+    </section>
   );
 };

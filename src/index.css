@@ -1,11 +1,271 @@
 @import "tailwindcss";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/jetbrains-mono";
+
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* WaveSurfer renders its scroll container inside a shadow root, exposed via
-   part="scroll" — style it through ::part() to match the app theme instead
-   of the browser's default scrollbar. */
+/* ==========================================================================
+   Design tokens — see docs/DESIGN_SYSTEM.md
+   Light = warm paper + ink. Dark = warm near-black. One accent (vermilion),
+   the colour of a cut line / editor's red pencil. Components use semantic
+   tokens (bg-paper, text-ink-2, border-line), never raw hex, so dark mode
+   needs no per-component overrides. tests/contrast.test.ts checks these
+   pairs against WCAG AA.
+   ========================================================================== */
+:root {
+  --paper: #f5f0e6;
+  --surface: #fbf8f1;
+  --sunk: #ebe5d7;
+  --line: #d6cdb8;
+  --line-strong: #b9ae95;
+  --ink: #1c1a16;
+  --ink-2: #4a463c;
+  --ink-3: #6b6657;
+  --accent: #d2381a;
+  --on-accent: #ffffff;
+  --accent-text: #b02d12;
+  --accent-wash: #f6dfd5;
+  --ok: #2f6b3e;
+  --ok-wash: #dfead9;
+  --warn: #8a5300;
+  --warn-wash: #f3e5c4;
+  --wave: #c9bfa6;
+  --wave-progress: #d2381a;
+  --region: rgba(210, 56, 26, 0.18);
+  color-scheme: light;
+}
+
+.dark {
+  --paper: #14120f;
+  --surface: #1c1a16;
+  --sunk: #0f0d0b;
+  --line: #36322a;
+  --line-strong: #544e41;
+  --ink: #f1ece0;
+  --ink-2: #c4bdac;
+  --ink-3: #9a9382;
+  --accent: #ff6a45;
+  --on-accent: #14120f;
+  --accent-text: #ff8a6b;
+  --accent-wash: #3a1e15;
+  --ok: #86c996;
+  --ok-wash: #1b2a1f;
+  --warn: #e3b25c;
+  --warn-wash: #2e2412;
+  --wave: #4a4538;
+  --wave-progress: #ff6a45;
+  --region: rgba(255, 106, 69, 0.22);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-wash: var(--accent-wash);
+  --color-ok: var(--ok);
+  --color-ok-wash: var(--ok-wash);
+  --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
+
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --radius-cut: 3px;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+html {
+  background: var(--paper);
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* ==========================================================================
+   Component classes (kept as plain classes so every screen looks the same)
+   ========================================================================== */
+@layer components {
+  .panel {
+    @apply border border-line bg-surface rounded-cut;
+  }
+  .panel-head {
+    @apply flex items-center justify-between gap-3 border-b border-line px-4 py-2.5;
+  }
+  .panel-body {
+    @apply p-4 sm:p-5;
+  }
+
+  /* small mono caption, used for field labels and section kickers */
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-ink-3;
+  }
+
+  .btn {
+    @apply inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-cut border border-line-strong bg-surface px-3.5 text-sm font-medium text-ink transition-colors;
+    @apply hover:border-ink hover:bg-sunk;
+    @apply disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line-strong disabled:hover:bg-surface;
+  }
+  .btn-primary {
+    @apply border-accent bg-accent text-on-accent hover:border-accent hover:bg-accent hover:brightness-110;
+    @apply disabled:hover:border-accent disabled:hover:bg-accent;
+  }
+  .btn-ink {
+    @apply border-ink bg-ink text-paper hover:bg-ink hover:brightness-125 disabled:hover:bg-ink disabled:hover:border-ink;
+  }
+  .btn-quiet {
+    @apply border-transparent bg-transparent text-ink-2 hover:border-transparent hover:bg-sunk hover:text-ink;
+  }
+  .btn-danger {
+    @apply text-accent-text hover:border-accent;
+  }
+  .btn-sm {
+    @apply h-8 px-2.5 text-xs;
+  }
+  .btn-icon {
+    @apply h-8 w-8 p-0;
+  }
+  .btn-lg {
+    @apply h-11 px-5 text-base;
+  }
+
+  .field {
+    @apply h-9 w-full rounded-cut border border-line-strong bg-paper px-3 font-mono text-sm text-ink placeholder:text-ink-3;
+    @apply focus-visible:outline-2 focus-visible:outline-accent;
+    @apply disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line-strong px-2 py-0.5 font-mono text-[11px] text-ink-2;
+  }
+
+  /* segmented control (mode tabs, original/spoilt switch) */
+  .segmented {
+    @apply inline-flex rounded-cut border border-line-strong bg-sunk p-0.5;
+  }
+  .segmented > button {
+    @apply inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-[2px] px-3 text-xs font-medium text-ink-2 transition-colors hover:text-ink;
+  }
+  .segmented > button[aria-selected="true"],
+  .segmented > button[aria-pressed="true"] {
+    @apply bg-surface text-ink shadow-[0_0_0_1px_var(--line-strong)];
+  }
+
+  input[type="range"] {
+    accent-color: var(--accent);
+  }
+  input[type="checkbox"] {
+    accent-color: var(--accent);
+  }
+
+  /* prose for guide / about pages */
+  .prose-doc {
+    @apply text-[15px] leading-7 text-ink-2;
+  }
+  .prose-doc h2 {
+    @apply mt-12 mb-3 font-display text-3xl leading-tight text-ink;
+  }
+  .prose-doc h3 {
+    @apply mt-7 mb-1.5 text-base font-semibold text-ink;
+  }
+  .prose-doc p {
+    @apply my-3;
+  }
+  .prose-doc ul {
+    @apply my-3 list-disc space-y-1.5 pl-5 marker:text-ink-3;
+  }
+  .prose-doc ol {
+    @apply my-3 list-decimal space-y-2 pl-5 marker:font-mono marker:text-accent-text;
+  }
+  .prose-doc a {
+    @apply text-accent-text underline underline-offset-2 hover:text-ink;
+  }
+  .prose-doc code {
+    @apply rounded-[2px] bg-sunk px-1.5 py-0.5 font-mono text-[0.85em] text-ink;
+  }
+  .prose-doc strong {
+    @apply font-semibold text-ink;
+  }
+}
+
+/* crop-mark corners: the product motif (a print-shop registration mark) */
+.crop {
+  position: relative;
+}
+.crop::before,
+.crop::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 0 solid var(--ink);
+  pointer-events: none;
+}
+.crop::before {
+  top: -1px;
+  left: -1px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.crop::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+
+/* dashed "cut here" rule */
+.cutline {
+  border-top: 1px dashed var(--line-strong);
+}
+
+/* ==========================================================================
+   Waveform
+   ========================================================================== */
+/* WaveSurfer renders its scroll container inside a shadow root exposed as
+   part="scroll"; style the scrollbar through ::part() to match the theme. */
 .waveform-host > div::part(scroll) {
-  scrollbar-color: #a5b4fc transparent;
+  scrollbar-color: var(--line-strong) transparent;
   scrollbar-width: thin;
 }
 .waveform-host > div::part(scroll)::-webkit-scrollbar {
@@ -15,18 +275,123 @@
   background: transparent;
 }
 .waveform-host > div::part(scroll)::-webkit-scrollbar-thumb {
-  background-color: #a5b4fc;
+  background-color: var(--line-strong);
   border-radius: 9999px;
 }
 .waveform-host > div::part(scroll)::-webkit-scrollbar-thumb:hover {
-  background-color: #818cf8;
+  background-color: var(--ink-3);
 }
-.dark .waveform-host > div::part(scroll) {
-  scrollbar-color: #4338ca transparent;
+
+/* ==========================================================================
+   Landing animation: a razor line sweeps the waveform, the track falls apart
+   into numbered parts, then closes up again. 10s loop.
+   ========================================================================== */
+.hero-wave .seg-a,
+.hero-wave .seg-b,
+.hero-wave .seg-c {
+  animation-duration: 10s;
+  animation-iteration-count: infinite;
+  animation-timing-function: cubic-bezier(0.65, 0, 0.25, 1);
 }
-.dark .waveform-host > div::part(scroll)::-webkit-scrollbar-thumb {
-  background-color: #4338ca;
+.hero-wave .seg-a { animation-name: seg-a; }
+.hero-wave .seg-b { animation-name: seg-b; }
+.hero-wave .seg-c { animation-name: seg-c; }
+.hero-wave .razor { animation: razor 10s linear infinite; }
+.hero-wave .stamp { animation: stamp 10s ease infinite; opacity: 0; }
+.hero-wave .cut-guide { animation: guide 10s ease infinite; opacity: 0; }
+
+@keyframes razor {
+  0% { transform: translateX(0); opacity: 0; }
+  3% { opacity: 1; }
+  34% { transform: translateX(var(--razor-travel, 800px)); opacity: 1; }
+  36%, 100% { transform: translateX(var(--razor-travel, 800px)); opacity: 0; }
 }
-.dark .waveform-host > div::part(scroll)::-webkit-scrollbar-thumb:hover {
-  background-color: #4f46e5;
+@keyframes seg-a {
+  0%, 28% { transform: translateX(0); }
+  40%, 80% { transform: translateX(-26px); }
+  92%, 100% { transform: translateX(0); }
+}
+@keyframes seg-b {
+  0%, 100% { transform: translateX(0); }
+}
+@keyframes seg-c {
+  0%, 28% { transform: translateX(0); }
+  40%, 80% { transform: translateX(26px); }
+  92%, 100% { transform: translateX(0); }
+}
+@keyframes stamp {
+  0%, 40% { opacity: 0; transform: translateY(6px); }
+  48%, 78% { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; transform: translateY(6px); }
+}
+@keyframes guide {
+  0%, 9% { opacity: 0; }
+  14%, 30% { opacity: 1; }
+  38%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero-wave .razor,
+  .hero-wave .seg-a,
+  .hero-wave .seg-b,
+  .hero-wave .seg-c,
+  .hero-wave .stamp,
+  .hero-wave .cut-guide {
+    animation: none;
+  }
+  /* static end-state: already cut, stamps visible */
+  .hero-wave .seg-a { transform: translateX(-26px); }
+  .hero-wave .seg-c { transform: translateX(26px); }
+  .hero-wave .stamp { opacity: 1; }
+  .hero-wave .razor { opacity: 0; }
+}
+
+.fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation: none; }
+}
+
+/* ==========================================================================
+   Touch devices: every control gets a 44px target (WCAG 2.5.5 / Apple HIG),
+   sliders get a taller hit area, and the page never scrolls sideways.
+   Unlayered on purpose so it wins over the component layer.
+   ========================================================================== */
+@media (pointer: coarse) {
+  .btn,
+  .field {
+    min-height: 44px;
+  }
+  .btn-sm {
+    min-height: 40px;
+  }
+  .btn-icon {
+    min-width: 44px;
+  }
+  .segmented > button {
+    min-height: 40px;
+  }
+  input[type="range"] {
+    min-height: 32px;
+  }
+  input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+/* the waveform is dragged horizontally: let the page keep vertical scrolling on touch */
+.waveform-host {
+  touch-action: pan-y;
 }

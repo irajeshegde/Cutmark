@@ -1,13 +1,30 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { AudioFileDetails, ChunkInfo } from '../types';
-import { formatFFmpegTime, formatHumanDuration, formatTimestampRange, getFileExtensionAndBase } from '../utils/formatters';
+import { AudioFileDetails, RenderedClip, SpoilSettings } from '../types';
+import { formatFFmpegTime, formatHumanDuration, formatTimestampRange } from '../utils/formatters';
+import { getExtension } from '../lib/filenames';
+import { buildFilterArgs, isSpoilActive } from '../lib/spoil';
+
+export type ProgressFn = (percent: number, currentIndex: number, total: number, message: string) => void;
+
+export class AbortError extends Error {
+  constructor() {
+    super('Cancelled');
+    this.name = 'AbortError';
+  }
+}
+
+export interface CodecStrategy {
+  extension: string;
+  mimeType: string;
+  encodeArgs: string[];
+}
 
 /**
- * Codecs the bundled ffmpeg-core WASM build is known to support for re-encoding.
- * Extensions not listed here fall back to MP3 (libmp3lame), which is always available.
+ * Codecs the bundled ffmpeg-core WASM build is known to encode. Extensions not
+ * listed here fall back to MP3 (libmp3lame), which is always available.
  */
-const CODEC_STRATEGY: Record<string, { mimeType: string; encodeArgs: string[] }> = {
+const CODEC_STRATEGY: Record<string, Omit<CodecStrategy, 'extension'>> = {
   mp3: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
   mpeg: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
   mpg: { mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] },
@@ -26,187 +43,207 @@ const CODEC_STRATEGY: Record<string, { mimeType: string; encodeArgs: string[] }>
   mka: { mimeType: 'audio/x-matroska', encodeArgs: ['-c:a', 'libopus', '-b:a', '128k'] },
 };
 
-const FALLBACK_STRATEGY = { extension: 'mp3', mimeType: 'audio/mpeg', encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'] };
+const FALLBACK_STRATEGY: CodecStrategy = {
+  extension: 'mp3',
+  mimeType: 'audio/mpeg',
+  encodeArgs: ['-c:a', 'libmp3lame', '-b:a', '192k'],
+};
 
-export function getCodecStrategy(extension: string): { extension: string; mimeType: string; encodeArgs: string[] } {
+export function getCodecStrategy(extension: string): CodecStrategy {
   const strategy = CODEC_STRATEGY[extension];
-  if (!strategy) return FALLBACK_STRATEGY;
-  return { extension, ...strategy };
+  return strategy ? { extension, ...strategy } : FALLBACK_STRATEGY;
 }
+
+// ---- engine lifecycle ---------------------------------------------------------
 
 let ffmpegInstance: FFmpeg | null = null;
-let isLoaded = false;
+let loading: Promise<FFmpeg> | null = null;
 
-/**
- * Initializes and loads FFmpeg WASM instance in the browser.
- */
-export async function getFFmpegInstance(onLog?: (msg: string) => void): Promise<FFmpeg> {
-  if (ffmpegInstance && isLoaded) {
-    return ffmpegInstance;
-  }
+/** The WASM core is copied into /ffmpeg at install/build time (scripts/copy-ffmpeg-core.mjs) and served from our own origin. */
+const CORE_BASE = `${import.meta.env.BASE_URL}ffmpeg`;
 
-  if (!ffmpegInstance) {
-    ffmpegInstance = new FFmpeg();
-  }
+export function getFFmpegInstance(): Promise<FFmpeg> {
+  if (ffmpegInstance) return Promise.resolve(ffmpegInstance);
+  if (loading) return loading;
 
-  if (onLog) {
-    ffmpegInstance.on('log', ({ message }) => {
-      onLog(message);
-    });
-  }
-
-  const cdnProviders = [
-    'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm',
-    'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm',
-  ];
-
-  let lastError: Error | null = null;
-
-  for (const baseURL of cdnProviders) {
+  loading = (async () => {
+    const ffmpeg = new FFmpeg();
     try {
-      if (onLog) onLog(`Loading FFmpeg WASM core from ${baseURL}...`);
-      
-      const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript');
-      const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm');
-
-      await ffmpegInstance.load({
-        coreURL,
-        wasmURL,
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
       });
-
-      isLoaded = true;
-      if (onLog) onLog('FFmpeg WASM initialized successfully!');
-      return ffmpegInstance;
     } catch (err) {
-      lastError = err as Error;
-      if (onLog) onLog(`Failed loading from ${baseURL}, trying fallback CDN...`);
+      throw new Error(
+        `Could not load the audio engine (${(err as Error).message || 'network error'}). Reload the page and try again.`
+      );
     }
-  }
+    ffmpegInstance = ffmpeg;
+    return ffmpeg;
+  })().finally(() => {
+    loading = null;
+  });
 
-  throw new Error(
-    `Failed to load FFmpeg WASM engine (${lastError?.message || 'Network error'}). Please check internet connection.`
-  );
+  return loading;
 }
 
+/** Kills any running FFmpeg work. The next job loads a fresh engine. */
+export function terminateFFmpeg(): void {
+  ffmpegInstance?.terminate();
+  ffmpegInstance = null;
+}
+
+/** Runs `fn` with an FFmpeg instance; aborting the signal terminates the engine mid-run. */
+export async function withFFmpeg<T>(signal: AbortSignal | undefined, fn: (ffmpeg: FFmpeg) => Promise<T>): Promise<T> {
+  if (signal?.aborted) throw new AbortError();
+  const ffmpeg = await getFFmpegInstance();
+  const onAbort = () => terminateFFmpeg();
+  signal?.addEventListener('abort', onAbort, { once: true });
+  try {
+    return await fn(ffmpeg);
+  } catch (err) {
+    if (signal?.aborted) throw new AbortError();
+    throw err;
+  } finally {
+    signal?.removeEventListener('abort', onAbort);
+  }
+}
+
+/** ffmpeg.exec resolves with the exit code instead of throwing — turn failures into errors. */
+export async function execChecked(ffmpeg: FFmpeg, args: string[]): Promise<void> {
+  const code = await ffmpeg.exec(['-y', ...args]);
+  if (code !== 0) throw new Error(`FFmpeg failed (exit code ${code}).`);
+}
+
+export async function readBlob(ffmpeg: FFmpeg, filename: string, mimeType: string): Promise<Blob> {
+  const data = await ffmpeg.readFile(filename);
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  return new Blob([bytes as BlobPart], { type: mimeType });
+}
+
+export async function writeInput(ffmpeg: FFmpeg, file: File, extension: string): Promise<string> {
+  const name = `input_${Date.now()}.${extension || 'bin'}`;
+  await ffmpeg.writeFile(name, await fetchFile(file));
+  return name;
+}
+
+/** Renders [startSec, startSec+durationSec) of `input` through gain/spoil filters and a re-encode. */
+export async function renderSegment(
+  ffmpeg: FFmpeg,
+  input: string,
+  output: string,
+  startSec: number,
+  durationSec: number,
+  strategy: CodecStrategy,
+  gainDb: number,
+  spoil: SpoilSettings | undefined
+): Promise<void> {
+  const duration = formatFFmpegTime(durationSec);
+  await execChecked(ffmpeg, [
+    '-ss', formatFFmpegTime(startSec),
+    '-t', duration,
+    '-i', input,
+    '-vn',
+    ...buildFilterArgs(gainDb, duration, spoil),
+    ...strategy.encodeArgs,
+    output,
+  ]);
+}
+
+// ---- equal split ---------------------------------------------------------------------
+
 /**
- * Splits an audio file into fixed minute chunks using FFmpeg WASM.
+ * Splits an audio file into fixed-length chunks. Tries a lossless stream copy
+ * first; falls back to a re-encode when the copy fails, and always re-encodes
+ * when "Protect Original" is on (filters can't run on copied streams).
  */
 export async function splitAudioFile(
   fileDetails: AudioFileDetails,
-  chunkDurationMinutes: number = 18,
-  onProgress: (percent: number, currentChunk: number, totalChunks: number, logMsg: string) => void
-): Promise<ChunkInfo[]> {
+  chunkDurationMinutes: number,
+  spoil: SpoilSettings | undefined,
+  onProgress: ProgressFn,
+  signal?: AbortSignal
+): Promise<RenderedClip[]> {
   const file = fileDetails.file;
   const totalDuration = fileDetails.durationSeconds;
   const chunkDurationSec = chunkDurationMinutes * 60;
-  const totalChunks = Math.ceil(totalDuration / chunkDurationSec);
+  const totalChunks = Math.max(1, Math.ceil(totalDuration / chunkDurationSec));
 
-  const { baseName, extension } = getFileExtensionAndBase(file.name);
-  const inputFilename = `input_${Date.now()}.${extension}`;
-  const reEncodeStrategy = getCodecStrategy(extension);
-  const copyMimeType = CODEC_STRATEGY[extension]?.mimeType || 'audio/mpeg';
+  const extension = getExtension(file.name) || 'mp3';
+  const strategy = getCodecStrategy(extension);
+  const copyMime = CODEC_STRATEGY[extension]?.mimeType ?? 'audio/mpeg';
+  const mustReencode = !!spoil && isSpoilActive(spoil);
 
-  onProgress(2, 0, totalChunks, 'Initializing FFmpeg WASM audio engine...');
-  const ffmpeg = await getFFmpegInstance((msg) => {
-    // optional verbose log hook
-  });
+  onProgress(2, 0, totalChunks, 'Starting the audio engine…');
 
-  onProgress(5, 0, totalChunks, `Loading "${file.name}" (${fileDetails.formattedDuration}) into browser memory...`);
-  
-  // Write file to FFmpeg virtual FS
-  const fileData = await fetchFile(file);
-  await ffmpeg.writeFile(inputFilename, fileData);
+  return withFFmpeg(signal, async (ffmpeg) => {
+    onProgress(5, 0, totalChunks, `Loading “${file.name}” (${fileDetails.formattedDuration}) into memory…`);
+    const input = await writeInput(ffmpeg, file, extension);
+    const rendered: RenderedClip[] = [];
 
-  const createdChunks: ChunkInfo[] = [];
-
-  for (let i = 0; i < totalChunks; i++) {
-    const startSec = i * chunkDurationSec;
-    const currentChunkDur = Math.min(chunkDurationSec, totalDuration - startSec);
-    const chunkNum = i + 1;
-    const paddedNum = chunkNum.toString().padStart(2, '0');
-    const outputFilename = `${baseName}_part${paddedNum}.${extension}`;
-
-    const progressBase = 10 + Math.round((i / totalChunks) * 80);
-    onProgress(
-      progressBase,
-      chunkNum,
-      totalChunks,
-      `Splitting chunk ${chunkNum} of ${totalChunks} (${formatHumanDuration(currentChunkDur)})...`
-    );
-
-    const startTimeFormatted = formatFFmpegTime(startSec);
-    const durationFormatted = formatFFmpegTime(currentChunkDur);
-
-    let chunkBlob: Blob | null = null;
-
-    // Try fast stream copy first (-c copy)
     try {
-      await ffmpeg.exec([
-        '-ss', startTimeFormatted,
-        '-i', inputFilename,
-        '-t', durationFormatted,
-        '-c', 'copy',
-        '-avoid_negative_ts', 'make_zero',
-        outputFilename,
-      ]);
+      for (let i = 0; i < totalChunks; i++) {
+        if (signal?.aborted) throw new AbortError();
+        const startSec = i * chunkDurationSec;
+        const durationSec = Math.min(chunkDurationSec, totalDuration - startSec);
+        const num = i + 1;
+        const percent = 10 + Math.round((i / totalChunks) * 80);
+        onProgress(percent, num, totalChunks, `Cutting part ${num} of ${totalChunks} (${formatHumanDuration(durationSec)})…`);
 
-      const data = await ffmpeg.readFile(outputFilename);
-      const uint8Array = new Uint8Array(data as ArrayBuffer);
-      
-      if (uint8Array.byteLength > 100) {
-        chunkBlob = new Blob([uint8Array], { type: copyMimeType });
-      } else {
-        await ffmpeg.deleteFile(outputFilename).catch(() => {});
+        let blob: Blob | null = null;
+        let outExt = extension;
+        let mime = copyMime;
+
+        if (!mustReencode) {
+          const copyOut = `chunk_${i}_copy.${extension}`;
+          try {
+            await execChecked(ffmpeg, [
+              '-ss', formatFFmpegTime(startSec),
+              '-i', input,
+              '-t', formatFFmpegTime(durationSec),
+              '-c', 'copy',
+              '-avoid_negative_ts', 'make_zero',
+              copyOut,
+            ]);
+            const candidate = await readBlob(ffmpeg, copyOut, copyMime);
+            if (candidate.size > 100) blob = candidate;
+          } catch {
+            // stream copy failed for this container; re-encode below
+          } finally {
+            await ffmpeg.deleteFile(copyOut).catch(() => {});
+          }
+        }
+
+        if (!blob) {
+          if (!mustReencode) onProgress(percent + 1, num, totalChunks, `Re-encoding part ${num} for a clean boundary…`);
+          const out = `chunk_${i}_enc.${strategy.extension}`;
+          try {
+            await renderSegment(ffmpeg, input, out, startSec, durationSec, strategy, 0, spoil);
+            blob = await readBlob(ffmpeg, out, strategy.mimeType);
+          } finally {
+            await ffmpeg.deleteFile(out).catch(() => {});
+          }
+          outExt = strategy.extension;
+          mime = strategy.mimeType;
+        }
+
+        rendered.push({
+          index: num,
+          extension: outExt,
+          mimeType: mime,
+          startSec,
+          durationSec,
+          formattedRange: formatTimestampRange(startSec, durationSec),
+          formattedDuration: formatHumanDuration(durationSec),
+          blob,
+          size: blob.size,
+        });
       }
-    } catch {
-      // stream copy failed, proceed to re-encode fallback below
+    } finally {
+      await ffmpeg.deleteFile(input).catch(() => {});
     }
 
-    let finalFilename = outputFilename;
-
-    // Fallback re-encode if stream copy created invalid or zero-byte file.
-    // If the source extension has no confirmed WASM encoder, re-encode to MP3 instead.
-    if (!chunkBlob) {
-      onProgress(
-        progressBase + 1,
-        chunkNum,
-        totalChunks,
-        `Re-encoding chunk ${chunkNum}/${totalChunks} for clean audio boundary...`
-      );
-
-      finalFilename = `${baseName}_part${paddedNum}.${reEncodeStrategy.extension}`;
-
-      await ffmpeg.exec([
-        '-ss', startTimeFormatted,
-        '-i', inputFilename,
-        '-t', durationFormatted,
-        ...reEncodeStrategy.encodeArgs,
-        finalFilename,
-      ]);
-
-      const data = await ffmpeg.readFile(finalFilename);
-      const uint8Array = new Uint8Array(data as ArrayBuffer);
-      chunkBlob = new Blob([uint8Array], { type: reEncodeStrategy.mimeType });
-    }
-
-    // Clean up temporary output file in FFmpeg FS
-    await ffmpeg.deleteFile(finalFilename).catch(() => {});
-
-    createdChunks.push({
-      index: chunkNum,
-      filename: finalFilename,
-      startTimeSeconds: startSec,
-      durationSeconds: currentChunkDur,
-      formattedRange: formatTimestampRange(startSec, currentChunkDur),
-      formattedDuration: formatHumanDuration(currentChunkDur),
-      blob: chunkBlob,
-      size: chunkBlob.size,
-    });
-  }
-
-  // Clean up input file from FFmpeg FS
-  await ffmpeg.deleteFile(inputFilename).catch(() => {});
-
-  onProgress(92, totalChunks, totalChunks, 'All audio chunks created! Preparing ZIP file...');
-  return createdChunks;
+    onProgress(92, totalChunks, totalChunks, 'All parts cut.');
+    return rendered;
+  });
 }

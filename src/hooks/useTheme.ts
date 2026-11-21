@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
+import { BRAND } from '../brand';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
 
-const STORAGE_KEY = 'audioslice-theme';
+const STORAGE_KEY = `${BRAND.slug}-theme`;
+
+function readStored(): Theme | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === 'light' || stored === 'dark' ? stored : null;
+  } catch {
+    return null; // storage blocked (private mode, strict settings)
+  }
+}
 
 function getInitialTheme(): Theme {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === 'light' || stored === 'dark') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return readStored() ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
 
 export function useTheme() {
@@ -15,12 +23,14 @@ export function useTheme() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem(STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      /* ignore */
+    }
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  }, []);
+  const toggleTheme = useCallback(() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark')), []);
 
   return { theme, toggleTheme };
 }

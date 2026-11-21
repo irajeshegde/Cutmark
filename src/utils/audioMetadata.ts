@@ -1,12 +1,13 @@
 import { AudioFileDetails } from '../types';
-import { formatFileSize, formatHumanDuration, getFileExtensionAndBase } from './formatters';
+import { formatHumanDuration } from './formatters';
+import { getExtension } from '../lib/filenames';
 
 /**
  * Reads audio file metadata (duration, size, channels, etc.) without sending anything to a server.
  */
 export async function getAudioFileDetails(file: File): Promise<AudioFileDetails> {
-  const { baseName, extension } = getFileExtensionAndBase(file.name);
-  
+  const extension = getExtension(file.name) || 'mp3';
+
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
     const audio = new Audio();
@@ -25,7 +26,7 @@ export async function getAudioFileDetails(file: File): Promise<AudioFileDetails>
         // Fallback to Web Audio API decoding if HTML5 Audio metadata fails
         tryWebAudioDecode(file)
           .then(resolve)
-          .catch((err) => reject(new Error('Could not determine audio duration. Please ensure the file is a valid MP3 or M4A audio file.')));
+          .catch((err) => reject(new Error('Could not determine audio duration. This file may be corrupted or use a codec your browser cannot decode.')));
         return;
       }
 
@@ -44,7 +45,7 @@ export async function getAudioFileDetails(file: File): Promise<AudioFileDetails>
       // Try Web Audio API as fallback before failing
       tryWebAudioDecode(file)
         .then(resolve)
-        .catch(() => reject(new Error('Unsupported or corrupted audio file. Please try re-exporting as standard MP3 or M4A.')));
+        .catch(() => reject(new Error('Your browser could not read this file. It may be corrupted, or use a codec it does not support. Try re-exporting it as MP3 or WAV.')));
     };
 
     audio.addEventListener('loadedmetadata', onLoaded);
@@ -57,7 +58,7 @@ export async function getAudioFileDetails(file: File): Promise<AudioFileDetails>
  * Fallback audio duration decoder using Web Audio API AudioContext
  */
 async function tryWebAudioDecode(file: File): Promise<AudioFileDetails> {
-  const { extension } = getFileExtensionAndBase(file.name);
+  const extension = getExtension(file.name) || 'mp3';
   const arrayBuffer = await file.arrayBuffer();
   const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new AudioContextClass();

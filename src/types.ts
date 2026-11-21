@@ -9,32 +9,30 @@ export interface AudioFileDetails {
   numberOfChannels?: number;
 }
 
-export interface ChunkInfo {
+/** A rendered piece of audio, before it has been given its final filename. */
+export interface RenderedClip {
   index: number;
-  filename: string;
-  startTimeSeconds: number;
-  durationSeconds: number;
+  extension: string;
+  mimeType: string;
+  startSec: number;
+  durationSec: number;
   formattedRange: string;
   formattedDuration: string;
-  blob?: Blob;
-  size?: number;
+  blob: Blob;
+  size: number;
 }
 
-export type ProcessingStage = 'idle' | 'analyzing' | 'ready' | 'loading-ffmpeg' | 'processing' | 'zipping' | 'completed' | 'error';
-
-export interface ProcessingProgressState {
-  stage: ProcessingStage;
-  currentChunkIndex: number;
-  totalChunks: number;
-  progressPercent: number;
-  statusMessage: string;
-  logs: string[];
-  errorMessage?: string;
+/** A rendered piece with its final, download-ready filename. */
+export interface OutputFile extends RenderedClip {
+  filename: string;
 }
 
-export interface ProcessingOptions {
-  chunkDurationMinutes: number; // default 18
-  forceReencode: boolean; // default false (use -c copy first)
+/** Everything the result view needs: the files, and a ZIP when there is more than one. */
+export interface OutputBundle {
+  files: OutputFile[];
+  /** Present only when files.length > 1. */
+  zip: { name: string; blob: Blob } | null;
+  spoilt: boolean;
 }
 
 export type AppMode = 'split' | 'editor' | 'finder';
@@ -58,4 +56,15 @@ export interface SpoilSettings {
   noiseAmount: number; // 0-100, mixes in hiss to mask fidelity
   muffleAmount: number; // 0-100, low-pass cutoff strength
   wobbleAmount: number; // 0-100, pitch/speed vibrato depth
+}
+
+export type JobStatus = 'idle' | 'running' | 'done' | 'error' | 'cancelled';
+
+export interface JobState {
+  status: JobStatus;
+  percent: number;
+  message: string;
+  logs: string[];
+  error?: string;
+  bundle: OutputBundle | null;
 }

@@ -1,19 +1,40 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { COARSE_STEP_SEC, DEFAULT_STEP_SEC, FINE_STEP_SEC } from '../utils/constants';
 
 /**
- * Space = play/pause, Left/Right = step, Shift+arrow = coarse step, Alt+arrow = fine ("frame") step.
- * Ignored while an input/textarea has focus so it doesn't hijack typing or native slider arrow-key behavior.
+ * Decides whether a key press belongs to the focused element instead of the
+ * player: typing in fields, Space/Enter on buttons and links (so keyboard users
+ * can still press them), arrow keys on sliders and tabs.
+ */
+export function shouldIgnoreShortcut(e: Pick<KeyboardEvent, 'code' | 'target' | 'ctrlKey' | 'metaKey'>): boolean {
+  if (e.ctrlKey || e.metaKey) return true;
+  const el = e.target as HTMLElement | null;
+  if (!el || !el.tagName) return false;
+
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+
+  const role = el.getAttribute('role');
+  if (e.code === 'Space') return tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY' || role === 'tab' || role === 'button';
+  return role === 'tab' || role === 'slider';
+}
+
+/**
+ * Space = play/pause, Left/Right = step, Shift+arrow = coarse step, Alt+arrow = fine step.
+ * Handlers are read through a ref so the listener is attached once.
  */
 export function useSeekShortcuts(onTogglePlay: () => void, onStep: (deltaSec: number) => void) {
+  const handlers = useRef({ onTogglePlay, onStep });
+  handlers.current = { onTogglePlay, onStep };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+      if (shouldIgnoreShortcut(e)) return;
 
       if (e.code === 'Space') {
         e.preventDefault();
-        onTogglePlay();
+        handlers.current.onTogglePlay();
         return;
       }
 
@@ -21,11 +42,11 @@ export function useSeekShortcuts(onTogglePlay: () => void, onStep: (deltaSec: nu
         e.preventDefault();
         const direction = e.code === 'ArrowRight' ? 1 : -1;
         const magnitude = e.shiftKey ? COARSE_STEP_SEC : e.altKey ? FINE_STEP_SEC : DEFAULT_STEP_SEC;
-        onStep(direction * magnitude);
+        handlers.current.onStep(direction * magnitude);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onTogglePlay, onStep]);
+  }, []);
 }

@@ -7,28 +7,44 @@ interface ModeSelectProps {
   onModeChange: (mode: AppMode) => void;
 }
 
-const TABS: { mode: AppMode; label: string; icon: React.ReactNode }[] = [
-  { mode: 'editor', label: 'Manual Editor', icon: <Waves className="w-3.5 h-3.5" /> },
-  { mode: 'finder', label: 'Find Timestamp', icon: <Crosshair className="w-3.5 h-3.5" /> },
-  { mode: 'split', label: 'Equal Split', icon: <Layers className="w-3.5 h-3.5" /> },
+export const MODE_TABS: { mode: AppMode; label: string; hint: string; icon: React.ReactNode }[] = [
+  { mode: 'editor', label: 'Manual Editor', hint: 'Pick ranges on the waveform', icon: <Waves className="h-3.5 w-3.5" aria-hidden="true" /> },
+  { mode: 'finder', label: 'Find Timestamp', hint: 'Find exact cut points by ear', icon: <Crosshair className="h-3.5 w-3.5" aria-hidden="true" /> },
+  { mode: 'split', label: 'Equal Split', hint: 'Fixed-length parts', icon: <Layers className="h-3.5 w-3.5" aria-hidden="true" /> },
 ];
 
+export const tabId = (mode: AppMode) => `tab-${mode}`;
+export const panelId = (mode: AppMode) => `panel-${mode}`;
+
 export const ModeSelect: React.FC<ModeSelectProps> = ({ mode, onModeChange }) => {
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const i = MODE_TABS.findIndex((t) => t.mode === mode);
+    const next = MODE_TABS[(i + (e.key === 'ArrowRight' ? 1 : -1) + MODE_TABS.length) % MODE_TABS.length];
+    onModeChange(next.mode);
+    document.getElementById(tabId(next.mode))?.focus();
+  };
+
   return (
-    <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-1 w-fit max-w-full">
-      {TABS.map((tab) => (
-        <button
-          key={tab.mode}
-          onClick={() => onModeChange(tab.mode)}
-          className={`text-xs font-medium px-3 sm:px-4 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-            mode === tab.mode
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm'
-              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-          }`}
-        >
-          {tab.icon} {tab.label}
-        </button>
-      ))}
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div role="tablist" aria-label="Tool" className="segmented max-w-full flex-wrap" onKeyDown={onKeyDown}>
+        {MODE_TABS.map((tab) => (
+          <button
+            key={tab.mode}
+            id={tabId(tab.mode)}
+            role="tab"
+            type="button"
+            aria-selected={mode === tab.mode}
+            aria-controls={panelId(tab.mode)}
+            tabIndex={mode === tab.mode ? 0 : -1}
+            onClick={() => onModeChange(tab.mode)}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-ink-3">{MODE_TABS.find((t) => t.mode === mode)?.hint}</p>
     </div>
   );
 };

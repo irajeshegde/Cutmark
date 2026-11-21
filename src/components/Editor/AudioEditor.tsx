@@ -1,437 +1,325 @@
 import React, { useRef, useState } from 'react';
-import { Maximize2, Minimize2 } from 'lucide-react';
-import { Waveform, WaveformHandle, WaveformRegion } from './Waveform';
-import { EditorToolbar } from './EditorToolbar';
+import { Check, Download, Maximize2, Minimize2, Scissors, SplitSquareHorizontal, Trash2, X } from 'lucide-react';
+import { Waveform } from './Waveform';
+import { Transport } from './Transport';
+import { SelectionControls } from './SelectionControls';
 import { ClipList } from './ClipList';
 import { TimestampImport } from './TimestampImport';
-import { SpoilControls } from './SpoilControls';
-import { ProcessingProgress } from '../ProcessingProgress';
-import { CompletionView } from '../CompletionView';
-import { FileHeaderBanner } from '../FileHeaderBanner';
-import { AudioFileDetails, ChunkInfo, EditorClip, ProcessingProgressState, SpoilSettings } from '../../types';
-import { DEFAULT_GAIN_DB } from '../../utils/constants';
+import { SpoilPanel } from '../SpoilPanel';
+import { FileHeader } from '../FileHeader';
+import { ProcessingView } from '../ProcessingView';
+import { ResultView } from '../ResultView';
+import { AudioFileDetails, EditorClip, SpoilSettings } from '../../types';
+import { DEFAULT_GAIN_DB, MAX_GAIN_DB, MIN_GAIN_DB } from '../../utils/constants';
 import { parseTimestampRanges } from '../../utils/parseTimestamps';
 import { exportClips } from '../../services/audioEditorService';
-import { createAndDownloadZip } from '../../services/zipService';
-import { useSeekShortcuts } from '../../hooks/useSeekShortcuts';
+import { packageOutputs } from '../../lib/outputs';
+import { isSpoilActive } from '../../lib/spoil';
+import { clipsFromRanges, makeClip, moveClip, splitClipAt, subtractRange, totalDuration } from '../../lib/clipOps';
+import { relabel, useClipHistory } from '../../hooks/useClipHistory';
 import { useFullscreen } from '../../hooks/useFullscreen';
+import { useRenderJob } from '../../hooks/useRenderJob';
+import { useSeekShortcuts } from '../../hooks/useSeekShortcuts';
+import { useSpoilPreview } from '../../hooks/useSpoilPreview';
+import { useWaveformSession } from '../../hooks/useWaveformSession';
 
-const DEFAULT_SPOIL_SETTINGS: SpoilSettings = {
-  enabled: false,
-  noiseAmount: 0,
-  muffleAmount: 0,
-  wobbleAmount: 0,
-};
-
-const MAX_UNDO_DEPTH = 20;
+/** Editor state lives in the workspace so it survives switching tabs. */
+export interface EditorSession {
+  history: ReturnType<typeof useClipHistory>;
+  spoil: SpoilSettings;
+  setSpoil: (s: SpoilSettings) => void;
+  joinIntoOne: boolean;
+  setJoinIntoOne: (join: boolean) => void;
+}
 
 interface AudioEditorProps {
   fileDetails: AudioFileDetails;
   onReset: () => void;
+  session: EditorSession;
 }
 
-function dbToLinear(db: number): number {
-  return Math.min(1, Math.max(0, Math.pow(10, db / 20)));
-}
-
-const BOUNDARY_EPSILON_SEC = 0.05;
-
-const IDLE_EXPORT_STATE: ProcessingProgressState = {
-  stage: 'idle',
-  currentChunkIndex: 0,
-  totalChunks: 0,
-  progressPercent: 0,
-  statusMessage: '',
-  logs: [],
-};
-
-export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset }) => {
+export const AudioEditor: React.FC<AudioEditorProps> = ({ fileDetails, onReset, session: editor }) => {
   const rootRef = useRef<HTMLDivElement>(null);
-  const waveformRef = useRef<WaveformHandle>(null);
-  const previewEndSecRef = useRef<number | null>(null);
-  const { isFullscreen, toggleFullscreen } = useFullscreen(rootRef);
+  const { isFullscreen, toggleFullscreen, supported: fullscreenSupported } = useFullscreen(rootRef);
 
-  const [spoilSettings, setSpoilSettings] = useState<SpoilSettings>(DEFAULT_SPOIL_SETTINGS);
-
-  const [durationSec, setDurationSec] = useState(0);
-  const [currentTimeSec, setCurrentTimeSec] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [region, setRegion] = useState<WaveformRegion | null>(null);
+  const { spoil, setSpoil, joinIntoOne, setJoinIntoOne, history } = editor;
   const [gainDb, setGainDb] = useState(DEFAULT_GAIN_DB);
-  const [zoomPxPerSec, setZoomPxPerSec] = useState(50);
-  const [minZoomPxPerSec, setMinZoomPxPerSec] = useState(10);
-
-  const [clips, setClips] = useState<EditorClip[]>([]);
-  const [clipsHistory, setClipsHistory] = useState<EditorClip[][]>([]);
-  const [joinIntoOne, setJoinIntoOne] = useState(false);
-  const [previewingClipId, setPreviewingClipId] = useState<string | null>(null);
   const [editingClipId, setEditingClipId] = useState<string | null>(null);
 
-  const [exportState, setExportState] = useState<ProcessingProgressState>(IDLE_EXPORT_STATE);
-  const [resultChunks, setResultChunks] = useState<ChunkInfo[]>([]);
-  const [zipBlob, setZipBlob] = useState<Blob | null>(null);
+  const { clips } = history;
+  const { job, run, cancel, reset: resetJob } = useRenderJob();
+
+  const preview = useSpoilPreview(spoil, gainDb);
+  const session = useWaveformSession(preview.attach);
+  const { waveformRef, durationSec, currentTimeSec, region } = session;
 
   const editingClip = clips.find((c) => c.id === editingClipId) ?? null;
+  const spoilActive = isSpoilActive(spoil);
 
-  const relabel = (list: EditorClip[]): EditorClip[] =>
-    list.map((c, i) => ({ ...c, label: `part${String(i + 1).padStart(2, '0')}` }));
+  useSeekShortcuts(session.togglePlay, session.step);
 
-  const pushHistory = (snapshot: EditorClip[]) => {
-    setClipsHistory((h) => [...h, snapshot].slice(-MAX_UNDO_DEPTH));
+  // ---- clip actions ----
+
+  const keepSelection = () => {
+    if (!region) return;
+    history.commit((prev) => relabel([...prev, makeClip(region.start, region.end, gainDb)]));
+    session.clearRegion();
   };
 
-  const handleUndo = () => {
-    setClipsHistory((h) => {
-      if (h.length === 0) return h;
-      setClips(h[h.length - 1]);
-      return h.slice(0, -1);
+  const deleteSelection = () => {
+    if (!region || durationSec <= 0) return;
+    history.commit((prev) => {
+      const base = prev.length > 0 ? prev : [makeClip(0, durationSec)];
+      const next = subtractRange(base, region.start, region.end);
+      return next.length === 0 ? prev : relabel(next);
+    });
+    setJoinIntoOne(true);
+    session.clearRegion();
+  };
+
+  const splitAtPlayhead = () => {
+    if (durationSec <= 0) return;
+    history.commit((prev) => {
+      const base = prev.length > 0 ? prev : [makeClip(0, durationSec)];
+      const next = splitClipAt(base, currentTimeSec);
+      return next === base ? prev : relabel(next);
     });
   };
 
-  const handleTimeUpdate = (t: number) => {
-    setCurrentTimeSec(t);
-    if (previewEndSecRef.current !== null && t >= previewEndSecRef.current) {
-      waveformRef.current?.pause();
-      previewEndSecRef.current = null;
-      setPreviewingClipId(null);
-    }
+  const importTimestamps = (text: string) => {
+    const imported = clipsFromRanges(parseTimestampRanges(text), durationSec);
+    if (imported.length === 0) return;
+    history.commit((prev) => relabel([...prev, ...imported]));
   };
 
-  const handlePlayPauseChange = (playing: boolean) => {
-    setIsPlaying(playing);
-    if (!playing) {
-      setPreviewingClipId(null);
-      previewEndSecRef.current = null;
-    }
+  const removeClip = (id: string) => history.commit((prev) => relabel(prev.filter((c) => c.id !== id)));
+  const moveClipBy = (id: string, direction: 'up' | 'down') =>
+    history.commit((prev) => {
+      const next = moveClip(prev, id, direction);
+      return next === prev ? prev : relabel(next);
+    });
+  const setClipGain = (id: string, db: number) => history.patch((prev) => prev.map((c) => (c.id === id ? { ...c, gainDb: db } : c)));
+
+  const previewClip = (clip: EditorClip) => {
+    setGainDb(clip.gainDb);
+    session.previewRange(clip.id, clip.startSec, clip.endSec);
   };
 
-  const handlePreviewClip = (clip: EditorClip) => {
-    if (previewingClipId === clip.id) {
-      waveformRef.current?.pause();
-      setPreviewingClipId(null);
-      previewEndSecRef.current = null;
-      return;
-    }
-    previewEndSecRef.current = clip.endSec;
-    setPreviewingClipId(clip.id);
-    waveformRef.current?.seekTo(clip.startSec);
-    waveformRef.current?.play();
-  };
-
-  const handleEditClip = (clip: EditorClip) => {
+  const editClip = (clip: EditorClip) => {
+    session.stopPreview();
     setEditingClipId(clip.id);
     setGainDb(clip.gainDb);
     waveformRef.current?.setRegionTimes(clip.startSec, clip.endSec);
-    waveformRef.current?.setVolume(dbToLinear(clip.gainDb));
-    if (zoomPxPerSec < 100) handleZoomChange(140);
+    if (session.zoomPxPerSec < 100) session.setZoom(140);
   };
 
-  const handleSaveEditedClip = () => {
+  const saveEdit = () => {
     if (!editingClipId || !region) return;
-    pushHistory(clips);
-    setClips((prev) =>
-      prev.map((c) => (c.id === editingClipId ? { ...c, startSec: region.start, endSec: region.end, gainDb } : c))
-    );
+    history.commit((prev) => prev.map((c) => (c.id === editingClipId ? { ...c, startSec: region.start, endSec: region.end, gainDb } : c)));
     setEditingClipId(null);
-    waveformRef.current?.clearRegion();
+    session.clearRegion();
   };
 
-  const handleCancelEdit = () => {
+  const cancelEdit = () => {
     setEditingClipId(null);
-    waveformRef.current?.clearRegion();
+    session.clearRegion();
   };
 
-  const handleGainChange = (db: number) => {
-    setGainDb(db);
-    waveformRef.current?.setVolume(dbToLinear(db));
-  };
+  // ---- export ----
 
-  const handleZoomChange = (px: number) => {
-    setZoomPxPerSec(px);
-    waveformRef.current?.setZoom(px);
-  };
-
-  const handleWaveformReady = (duration: number, fitPxPerSec: number) => {
-    setDurationSec(duration);
-    setMinZoomPxPerSec(fitPxPerSec);
-    setZoomPxPerSec(fitPxPerSec);
-    waveformRef.current?.setZoom(fitPxPerSec);
-  };
-
-  const handleRegionStartChange = (sec: number) => {
-    const currentEnd = region ? region.end : Math.min(durationSec, sec + 1);
-    const newStart = Math.min(sec, currentEnd - BOUNDARY_EPSILON_SEC);
-    waveformRef.current?.setRegionTimes(newStart, currentEnd);
-  };
-
-  const handleRegionEndChange = (sec: number) => {
-    const currentStart = region ? region.start : 0;
-    const newEnd = Math.max(sec, currentStart + BOUNDARY_EPSILON_SEC);
-    waveformRef.current?.setRegionTimes(currentStart, newEnd);
-  };
-
-  const handleRegionRangeChange = (start: number, end: number) => {
-    if (durationSec <= 0) return;
-    const clampedStart = Math.max(0, Math.min(start, durationSec));
-    const clampedEnd = Math.max(clampedStart + BOUNDARY_EPSILON_SEC, Math.min(end, durationSec));
-    waveformRef.current?.setRegionTimes(clampedStart, clampedEnd);
-  };
-
-  const handleExtractSelection = () => {
-    if (!region) return;
-    pushHistory(clips);
-    setClips((prev) =>
-      relabel([...prev, { id: crypto.randomUUID(), startSec: region.start, endSec: region.end, gainDb, label: '' }])
-    );
-    waveformRef.current?.clearRegion();
-  };
-
-  const handleDeleteSelection = () => {
-    if (!region || durationSec <= 0) return;
-    const remaining: EditorClip[] = [];
-
-    if (region.start > BOUNDARY_EPSILON_SEC) {
-      remaining.push({ id: crypto.randomUUID(), startSec: 0, endSec: region.start, gainDb: 0, label: '' });
-    }
-    if (region.end < durationSec - BOUNDARY_EPSILON_SEC) {
-      remaining.push({ id: crypto.randomUUID(), startSec: region.end, endSec: durationSec, gainDb: 0, label: '' });
-    }
-    if (remaining.length === 0) return;
-
-    pushHistory(clips);
-    setClips(relabel(remaining));
-    if (remaining.length > 1) setJoinIntoOne(true);
-    waveformRef.current?.clearRegion();
-  };
-
-  const handleSplitAtPlayhead = () => {
-    if (durationSec <= 0) return;
-
-    if (clips.length === 0) {
-      if (currentTimeSec <= BOUNDARY_EPSILON_SEC || currentTimeSec >= durationSec - BOUNDARY_EPSILON_SEC) return;
-      pushHistory(clips);
-      setClips(
-        relabel([
-          { id: crypto.randomUUID(), startSec: 0, endSec: currentTimeSec, gainDb: 0, label: '' },
-          { id: crypto.randomUUID(), startSec: currentTimeSec, endSec: durationSec, gainDb: 0, label: '' },
-        ])
-      );
-      return;
-    }
-
-    const idx = clips.findIndex(
-      (c) => currentTimeSec > c.startSec + BOUNDARY_EPSILON_SEC && currentTimeSec < c.endSec - BOUNDARY_EPSILON_SEC
-    );
-    if (idx === -1) return;
-
-    const target = clips[idx];
-    const head: EditorClip = { ...target, id: crypto.randomUUID(), endSec: currentTimeSec };
-    const tail: EditorClip = { ...target, id: crypto.randomUUID(), startSec: currentTimeSec };
-
-    pushHistory(clips);
-    setClips((prev) => {
-      const copy = [...prev];
-      copy.splice(idx, 1, head, tail);
-      return relabel(copy);
-    });
-  };
-
-  const handleImportTimestamps = (text: string) => {
-    const ranges = parseTimestampRanges(text);
-    if (ranges.length === 0) return;
-
-    const imported: EditorClip[] = ranges
-      .map((r) => ({
-        id: crypto.randomUUID(),
-        startSec: Math.max(0, r.startSec),
-        endSec: durationSec > 0 ? Math.min(r.endSec, durationSec) : r.endSec,
-        gainDb: 0,
-        label: '',
-      }))
-      .filter((c) => c.endSec > c.startSec);
-
-    if (imported.length === 0) return;
-    pushHistory(clips);
-    setClips((prev) => relabel([...prev, ...imported]));
-  };
-
-  const handleRemoveClip = (id: string) => {
-    pushHistory(clips);
-    setClips((prev) => relabel(prev.filter((c) => c.id !== id)));
-  };
-
-  const handleMoveClip = (id: string, direction: 'up' | 'down') => {
-    pushHistory(clips);
-    setClips((prev) => {
-      const idx = prev.findIndex((c) => c.id === id);
-      const swapWith = direction === 'up' ? idx - 1 : idx + 1;
-      if (idx === -1 || swapWith < 0 || swapWith >= prev.length) return prev;
-      const copy = [...prev];
-      [copy[idx], copy[swapWith]] = [copy[swapWith], copy[idx]];
-      return relabel(copy);
-    });
-  };
-
-  const handleClipGainChange = (id: string, db: number) => {
-    setClips((prev) => prev.map((c) => (c.id === id ? { ...c, gainDb: db } : c)));
-  };
-
-  const handleStep = (deltaSec: number) => {
-    const target = Math.min(durationSec, Math.max(0, currentTimeSec + deltaSec));
-    waveformRef.current?.seekTo(target);
-  };
-
-  useSeekShortcuts(() => waveformRef.current?.togglePlayPause(), handleStep);
-
-  const handleExport = async () => {
+  const handleExport = () => {
     if (clips.length === 0) return;
-
-    setExportState({
-      stage: 'processing',
-      currentChunkIndex: 0,
-      totalChunks: clips.length,
-      progressPercent: 1,
-      statusMessage: 'Starting export...',
-      logs: ['Initializing editor export...'],
+    waveformRef.current?.pause();
+    const join = joinIntoOne && clips.length > 1;
+    void run(async ({ signal, report }) => {
+      const rendered = await exportClips(fileDetails, clips, join, spoil, (percent, _i, _n, message) => report(percent, message), signal);
+      report(94, rendered.length > 1 ? 'Packing the ZIP…' : 'Naming the file…');
+      return packageOutputs(
+        rendered,
+        { sourceName: fileDetails.name, spoilt: spoilActive },
+        (zipPct) => report(94 + zipPct * 0.05, 'Packing the ZIP…')
+      );
     });
-
-    try {
-      const chunks = await exportClips(fileDetails, clips, joinIntoOne, spoilSettings, (percent, current, total, logMsg) => {
-        setExportState((prev) => ({
-          ...prev,
-          progressPercent: percent,
-          currentChunkIndex: current,
-          totalChunks: total,
-          statusMessage: logMsg,
-          logs: [...prev.logs, logMsg].slice(-15),
-        }));
-      });
-
-      setResultChunks(chunks);
-
-      setExportState((prev) => ({
-        ...prev,
-        stage: 'zipping',
-        progressPercent: 95,
-        statusMessage: 'Creating ZIP file and triggering download...',
-        logs: [...prev.logs, 'Bundling exported clips into JSZip...'],
-      }));
-
-      const generatedZipBlob = await createAndDownloadZip(fileDetails.name, chunks, (zipPercent) => {
-        setExportState((prev) => ({
-          ...prev,
-          progressPercent: Math.min(99, 92 + Math.round(zipPercent * 0.08)),
-          statusMessage: `Compressing ZIP file (${zipPercent}%)...`,
-        }));
-      });
-
-      setZipBlob(generatedZipBlob);
-
-      setExportState({
-        stage: 'completed',
-        currentChunkIndex: chunks.length,
-        totalChunks: chunks.length,
-        progressPercent: 100,
-        statusMessage: 'Export completed successfully!',
-        logs: ['ZIP file generated and auto-downloaded successfully!'],
-      });
-    } catch (err) {
-      setExportState((prev) => ({
-        ...prev,
-        stage: 'error',
-        errorMessage: (err as Error).message || 'An error occurred while exporting.',
-        logs: [...prev.logs, `Error: ${(err as Error).message}`],
-      }));
-    }
   };
 
-  if (exportState.stage === 'processing' || exportState.stage === 'zipping' || exportState.stage === 'error') {
-    return <ProcessingProgress state={exportState} filename={fileDetails.name} />;
-  }
+  const outputCount = joinIntoOne && clips.length > 1 ? 1 : clips.length;
+  const exportLabel = outputCount === 1 ? 'Export 1 file' : `Export ${outputCount} files (ZIP)`;
+  const showJob = job.status !== 'idle';
 
-  if (exportState.stage === 'completed') {
-    return (
-      <CompletionView baseFilename={fileDetails.name} chunks={resultChunks} zipBlob={zipBlob} onReset={onReset} />
-    );
-  }
+  // What to do next, in plain words.
+  const hint = editingClip
+    ? 'Adjust the selection, then save the change.'
+    : region
+      ? 'Keep selection saves it as a clip. Delete selection removes it from the track.'
+      : clips.length === 0
+        ? 'Drag across the waveform to select a part, or paste timestamps below.'
+        : 'Add more clips, or export when you are done.';
 
   return (
     <div
       ref={rootRef}
-      className={`bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${
-        isFullscreen ? 'w-screen h-screen overflow-y-auto rounded-none' : 'rounded-3xl overflow-hidden'
-      }`}
+      className={isFullscreen ? 'h-screen w-screen overflow-y-auto bg-paper' : 'space-y-5'}
     >
-      <FileHeaderBanner fileDetails={fileDetails} onReset={onReset} />
+      {showJob && (
+        <div className={isFullscreen ? 'mx-auto max-w-3xl p-4' : ''}>
+          {job.status === 'done' && job.bundle ? (
+            <ResultView bundle={job.bundle} onBack={resetJob} onStartOver={onReset} />
+          ) : (
+            <ProcessingView job={job} filename={fileDetails.name} onCancel={cancel} onBack={resetJob} />
+          )}
+        </div>
+      )}
 
-      <div className={isFullscreen ? 'p-4 sm:p-8 space-y-6' : 'p-6 sm:p-8 space-y-6'}>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-bold">
-            Timeline
-          </span>
-          <button
-            onClick={toggleFullscreen}
-            className="text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 transition cursor-pointer"
-          >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-          </button>
+      {/* The editor stays mounted (hidden) during export so clips and the waveform survive. */}
+      <div hidden={showJob} className={isFullscreen ? 'mx-auto max-w-3xl space-y-5 p-4' : 'space-y-5'}>
+        <div className="panel">
+          <FileHeader fileDetails={fileDetails} onReset={onReset} showsWaveform />
+
+          <div className="panel-body space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-h-5 text-sm text-ink-2" role="status">{hint}</p>
+              {fullscreenSupported && (
+                <button type="button" className="btn btn-sm hidden sm:inline-flex" onClick={toggleFullscreen}>
+                  {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" /> : <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                </button>
+              )}
+            </div>
+
+            {session.loadError && (
+              <p role="alert" className="border border-accent bg-accent-wash px-3 py-2 text-sm text-ink rounded-cut">
+                Could not draw the waveform: {session.loadError}
+              </p>
+            )}
+
+            <Waveform ref={waveformRef} file={fileDetails.file} {...session.waveformProps} />
+
+            <Transport
+              currentTimeSec={currentTimeSec}
+              durationSec={durationSec}
+              isPlaying={session.isPlaying}
+              zoomPxPerSec={session.zoomPxPerSec}
+              minZoomPxPerSec={session.minZoomPxPerSec}
+              onTogglePlay={session.togglePlay}
+              onStep={session.step}
+              onZoomChange={session.setZoom}
+            />
+
+            <div className="cutline pt-4">
+              <SelectionControls
+                region={region}
+                disabled={durationSec <= 0}
+                onCommit={session.commitTime}
+                onStampStart={() => session.setStart(currentTimeSec)}
+                onStampEnd={() => session.setEnd(currentTimeSec)}
+              >
+                <div>
+                  <label htmlFor="selection-gain" className="eyebrow mb-1.5 flex justify-between">
+                    <span>Gain</span>
+                    <span className="font-mono normal-case tracking-normal text-ink-2">{gainDb > 0 ? '+' : ''}{gainDb} dB</span>
+                  </label>
+                  <input
+                    id="selection-gain"
+                    type="range"
+                    min={MIN_GAIN_DB}
+                    max={MAX_GAIN_DB}
+                    value={gainDb}
+                    onChange={(e) => setGainDb(Number(e.target.value))}
+                    className="mt-2.5 w-full"
+                  />
+                </div>
+              </SelectionControls>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {editingClip ? (
+                <>
+                  <button type="button" className="btn btn-primary" onClick={saveEdit} disabled={!region}>
+                    <Check className="h-4 w-4" aria-hidden="true" /> Save change
+                  </button>
+                  <button type="button" className="btn" onClick={cancelEdit}>
+                    <X className="h-4 w-4" aria-hidden="true" /> Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-primary" onClick={keepSelection} disabled={!region}>
+                    <Scissors className="h-4 w-4" aria-hidden="true" /> Keep selection
+                  </button>
+                  <button type="button" className="btn" onClick={deleteSelection} disabled={!region}>
+                    <Trash2 className="h-4 w-4" aria-hidden="true" /> Delete selection
+                  </button>
+                  <button type="button" className="btn" onClick={splitAtPlayhead} disabled={durationSec <= 0}>
+                    <SplitSquareHorizontal className="h-4 w-4" aria-hidden="true" /> Split here
+                  </button>
+                  {region && (
+                    <button type="button" className="btn btn-quiet sm:ml-auto" onClick={session.clearRegion}>Clear selection</button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        <Waveform
-          ref={waveformRef}
-          file={fileDetails.file}
-          onReady={handleWaveformReady}
-          onTimeUpdate={handleTimeUpdate}
-          onPlayPauseChange={handlePlayPauseChange}
-          onRegionChange={setRegion}
+        <ClipList
+          clips={clips}
+          joinIntoOne={joinIntoOne}
+          onJoinToggle={setJoinIntoOne}
+          onRemoveClip={removeClip}
+          onMoveClip={moveClipBy}
+          onClipGainChange={setClipGain}
+          onPreviewClip={previewClip}
+          onEditClip={editClip}
+          previewingClipId={session.previewId}
+          editingClipId={editingClipId}
+          onUndo={history.undo}
+          canUndo={history.canUndo}
         />
 
-        <div className={isFullscreen ? 'max-w-3xl mx-auto w-full space-y-6' : 'space-y-6'}>
-          <EditorToolbar
-            currentTimeSec={currentTimeSec}
-            durationSec={durationSec}
-            isPlaying={isPlaying}
-            region={region}
-            gainDb={gainDb}
-            zoomPxPerSec={zoomPxPerSec}
-            minZoomPxPerSec={minZoomPxPerSec}
-            onTogglePlay={() => waveformRef.current?.togglePlayPause()}
-            onStep={handleStep}
-            onRegionStartChange={handleRegionStartChange}
-            onRegionEndChange={handleRegionEndChange}
-            onRegionRangeChange={handleRegionRangeChange}
-            onClearRegion={() => waveformRef.current?.clearRegion()}
-            onGainChange={handleGainChange}
-            onZoomChange={handleZoomChange}
-            onExtractSelection={handleExtractSelection}
-            onDeleteSelection={handleDeleteSelection}
-            onSplitAtPlayhead={handleSplitAtPlayhead}
-            editingClipLabel={editingClip?.label ?? null}
-            onSaveEdit={handleSaveEditedClip}
-            onCancelEdit={handleCancelEdit}
-          />
+        <details className="panel group" open={spoil.enabled || undefined}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink">
+            <span>Spoil the audio <span className="font-normal text-ink-3">· optional, for sharing a preview</span></span>
+            <span className={`chip ${spoilActive ? 'border-warn text-warn' : ''}`}>{spoilActive ? 'On' : 'Off'}</span>
+          </summary>
+          <div className="border-t border-line">
+            <SpoilPanel
+              bare
+              settings={spoil}
+              onChange={setSpoil}
+              listen={preview.listen}
+              onListenChange={preview.setListen}
+              previewAvailable={preview.available}
+              playHint="Press play on the waveform above."
+            />
+          </div>
+        </details>
 
-          <TimestampImport onImport={handleImportTimestamps} disabled={editingClipId !== null} />
+        <details className="panel">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-ink">
+            Paste timestamps <span className="font-normal text-ink-3">· add many clips at once</span>
+          </summary>
+          <div className="border-t border-line p-4">
+            <TimestampImport onImport={importTimestamps} disabled={editingClipId !== null} />
+          </div>
+        </details>
 
-          <SpoilControls settings={spoilSettings} onChange={setSpoilSettings} />
-
-          <ClipList
-            clips={clips}
-            joinIntoOne={joinIntoOne}
-            onJoinToggle={setJoinIntoOne}
-            onRemoveClip={handleRemoveClip}
-            onMoveClip={handleMoveClip}
-            onClipGainChange={handleClipGainChange}
-            onPreviewClip={handlePreviewClip}
-            onEditClip={handleEditClip}
-            previewingClipId={previewingClipId}
-            editingClipId={editingClipId}
-            onUndo={handleUndo}
-            canUndo={clipsHistory.length > 0}
-            onExport={handleExport}
-            isExporting={false}
-          />
+        {/* export bar: sticky so it is always one thumb away on a phone */}
+        <div className="sticky bottom-0 z-30 -mx-4 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur sm:mx-0 sm:border sm:rounded-cut sm:bg-surface">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-xs text-ink-3" role="status">
+              {clips.length === 0
+                ? 'No clips to export yet'
+                : `${clips.length} clip${clips.length === 1 ? '' : 's'} · ${Math.round(totalDuration(clips))} s total${spoilActive ? ' · spoilt' : ''}`}
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg w-full sm:w-auto"
+              onClick={handleExport}
+              disabled={clips.length === 0 || editingClipId !== null}
+            >
+              <Download className="h-4 w-4" aria-hidden="true" /> {exportLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>
